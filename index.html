@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kho Đề & Bài Tập Trực Tuyến</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <style>
+    .btn-fx { transition: all 0.18s ease; }
+    .btn-fx:active { transform: scale(0.96); }
+    .card-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 cursor-pointer" data-action="go-home">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">Q</div>
+        <div>
+          <h1 class="font-bold text-slate-900 leading-tight text-base sm:text-lg">Luyện Tập Trực Tuyến</h1>
+          <p class="text-xs text-slate-500 hidden sm:block">Tự động đồng bộ kho bài tập</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span id="connBadge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span> Chưa gắn link Script
+        </span>
+        <button id="btnAdmin" data-action="open-admin" class="btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white">
+          Admin
+        </button>
+        <button id="btnRefresh" data-action="refresh-data" class="btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">
+          Làm mới
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+    <!-- MÀN HÌNH 1: SẢNH CHỌN MỤC -->
+    <section id="viewLobby" class="space-y-6">
+      <div class="card-box p-5 sm:p-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0">
+        <h2 class="text-xl sm:text-2xl font-bold">Chào mừng bạn đến với kho bài tập</h2>
+        <p class="text-indigo-100 text-sm mt-1">Gõ tên môn học hoặc tên bài để tìm nhanh, sau đó bấm Chi tiết để tự chọn gói ôn tập.</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <input id="searchInput" type="search" placeholder="Gõ tên môn học hoặc tên bài tập..." class="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+
+      <div id="deckGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- MÀN HÌNH 2: CHI TIẾT & TÙY CHỌN GÓI ÔN TẬP -->
+    <section id="viewDetail" class="hidden space-y-5 max-w-4xl mx-auto">
+      <div class="card-box p-5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <button data-action="go-home" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700">
+            ← Sảnh chính
+          </button>
+          <div>
+            <span id="detailSubject" class="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700">Môn</span>
+            <h2 id="detailTitle" class="font-bold text-slate-900 text-lg sm:text-xl mt-1">Tên chuyên đề</h2>
+          </div>
+        </div>
+        <div id="detailTotalBadge" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600"></div>
+      </div>
+
+      <!-- BƯỚC 1: CHỌN GÓI DẠNG BÀI -->
+      <div class="card-box p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">1. Chọn gói dạng bài muốn ôn</h3>
+            <p class="text-xs text-slate-500">Tự chọn một dạng hoặc kết hợp nhiều dạng cùng lúc.</p>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button data-action="preset-types" data-preset="MCQ" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Trắc nghiệm</button>
+            <button data-action="preset-types" data-preset="TF" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Đúng / Sai</button>
+            <button data-action="preset-types" data-preset="MCQ+TF" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Kết hợp TN + Đ/S</button>
+            <button data-action="preset-types" data-preset="ALL" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Tất cả</button>
+          </div>
+        </div>
+        <div id="detailTypeList" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+      </div>
+
+      <!-- BƯỚC 2: CHỌN TỪNG PHẦN HOẶC ÔN HẾT -->
+      <div class="card-box p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">2. Chọn phần / bài muốn ôn</h3>
+            <p class="text-xs text-slate-500">Chọn từng phần lẻ để ôn sâu hoặc chọn ôn hết toàn bộ chuyên đề.</p>
+          </div>
+          <div class="flex gap-2">
+            <button data-action="parts-all" class="btn-fx px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Chọn ôn hết</button>
+            <button data-action="parts-none" class="btn-fx px-3 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">Bỏ chọn</button>
+          </div>
+        </div>
+        <div id="detailPartList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- THANH BẮT ĐẦU -->
+      <div class="card-box p-4 bg-indigo-50/70 border-indigo-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div id="selectionSummary" class="text-sm text-slate-700 font-medium"></div>
+        <button id="btnLaunchQuiz" data-action="launch-quiz" class="btn-fx w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-sm">
+          Bắt đầu ôn tập →
+        </button>
+      </div>
+    </section>
+
+    <!-- MÀN HÌNH 3: KHÔNG GIAN LÀM BÀI -->
+    <section id="viewQuiz" class="hidden space-y-5 max-w-4xl mx-auto">
+      <div class="card-box p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button data-action="go-detail" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700">
+            ← Đổi gói ôn
+          </button>
+          <div>
+            <h2 id="quizTitle" class="font-bold text-slate-900 text-base sm:text-lg">Tên đề thi</h2>
+            <p id="quizMeta" class="text-xs text-slate-500">Chuyên đề • 0 câu</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="quizScoreBadge" class="hidden px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-semibold text-sm border border-emerald-200"></span>
+          <button id="btnSubmitQuiz" data-action="ask-submit" class="btn-fx px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm">
+            Nộp bài
+          </button>
+        </div>
+      </div>
+
+      <div id="questionArea" class="space-y-4"></div>
+    </section>
+  </main>
+
+  <!-- MODAL ĐĂNG NHẬP ADMIN -->
+  <dialog id="adminLoginModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-sm w-[92%] shadow-xl border border-slate-200">
+    <form id="adminLoginForm" class="p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-base">Đăng nhập Admin</h3>
+        <button type="button" data-action="close-login" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-500">Chỉ Admin mới có quyền tạo bài, gắn link Google Sheet bài tập, sắp xếp và quản lý hệ thống.</p>
+      <input id="inpAdminPass" type="password" required placeholder="Nhập mật khẩu Admin..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <div class="flex justify-end gap-2">
+        <button type="button" data-action="close-login" class="btn-fx px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium">Hủy</button>
+        <button type="submit" class="btn-fx px-4 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-sm font-semibold">Đăng nhập</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- MODAL QUẢN TRỊ ADMIN (2 PHẦN CHUYỂN QUA LẠI) -->
+  <dialog id="manageModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-2xl w-[94%] shadow-xl border border-slate-200">
+    <div class="p-5 space-y-4 max-h-[88vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Bảng quản trị Admin</h3>
+          <p class="text-xs text-slate-500">Quản lý bài tập, link Google Sheets và bảo mật</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button data-action="admin-logout" class="btn-fx px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Đăng xuất</button>
+          <button data-action="close-manage" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+        </div>
+      </div>
+
+      <!-- THANH CHUYỂN 2 PHẦN -->
+      <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+        <button id="tabBtnCreate" data-action="switch-admin-tab" data-tab="create" class="btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold">
+          Tạo bài & Mật khẩu
+        </button>
+        <button id="tabBtnList" data-action="switch-admin-tab" data-tab="list" class="btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold">
+          Tổng bài tập (<span id="adminListCount">0</span>)
+        </button>
+      </div>
+
+      <!-- PHẦN 1: TẠO BÀI TẬP & ĐỔI MẬT KHẨU -->
+      <div id="adminPanelCreate" class="space-y-4">
+        <form id="createDeckForm" class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div class="text-xs font-bold uppercase tracking-wider text-indigo-700">Tạo & Xuất bài tập mới</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Môn học (tự nhập)</label>
+              <input id="inpSubject" type="text" required placeholder="Nhập tên môn học..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Tên bài tập / Chuyên đề</label>
+              <input id="inpTitle" type="text" required placeholder="VD: Đề ôn tập chương 1" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Link Google Sheet của bài tập này</label>
+            <input id="inpSheetUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <button id="btnCreateDeck" type="submit" class="btn-fx w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold">
+            + Xuất bài lên Sảnh
+          </button>
+        </form>
+
+        <form id="changePassForm" class="space-y-3 bg-amber-50/70 p-4 rounded-xl border border-amber-200">
+          <div class="text-xs font-bold uppercase tracking-wider text-amber-800">Đổi mật khẩu Admin</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <input id="inpOldPass" type="password" required placeholder="Mật khẩu hiện tại" class="px-3 py-2 rounded-lg border border-amber-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <input id="inpNewPass" type="password" required minlength="4" placeholder="Mật khẩu mới (>= 4 ký tự)" class="px-3 py-2 rounded-lg border border-amber-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+          <button id="btnChangePass" type="submit" class="btn-fx px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold">
+            Cập nhật mật khẩu
+          </button>
+        </form>
+      </div>
+
+      <!-- PHẦN 2: TỔNG BÀI TẬP (CHI TIẾT, SỬA, ĐỔI LINK, SẮP XẾP, XÓA) -->
+      <div id="adminPanelList" class="hidden space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-500">Bấm <strong>Chi tiết</strong> để xem/sửa tên, môn, link Sheet; bấm <strong>↑ ↓</strong> để đổi vị trí.</span>
+        </div>
+        <div id="manageDeckList" class="space-y-2.5"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL XÁC NHẬN NỘP BÀI -->
+  <dialog id="confirmSubmitModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-sm w-[92%] shadow-xl border border-slate-200">
+    <div class="p-5 space-y-4">
+      <h3 class="font-bold text-slate-900 text-base">Xác nhận nộp bài</h3>
+      <p id="confirmSubmitMsg" class="text-sm text-slate-600 leading-relaxed"></p>
+      <div class="flex justify-end gap-2 pt-1">
+        <button data-action="cancel-submit" class="btn-fx px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Kiểm tra lại</button>
+        <button data-action="confirm-submit" class="btn-fx px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Chắc chắn nộp</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm shadow-lg transition-all"></div>
+
+  <script>
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwUHAnGUXRFtCYybtmlliLGgIPImElup92oqOdvasclKNQ-oSgX0nNmAi2JE5skV6o2ig/exec';
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const normStr = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+
+    const TYPE_LABELS = { MCQ: 'Trắc nghiệm', TF: 'Đúng / Sai', SHORT: 'Trả lời ngắn' };
+
+    const state = {
+      view: 'lobby',
+      search: '',
+      decks: [],
+      activeDeck: null,
+      selectedTypes: [],
+      selectedParts: [],
+      quizQuestions: [],
+      answers: {},
+      submitted: false,
+      loading: false,
+      isAdmin: false,
+      adminTab: 'create',
+      editingDeckId: null,
+      adminPassword: localStorage.getItem('quiz_admin_pw') || 'admin123'
+    };
+
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.add('hidden'), 2600);
+    }
+
+    function setBadge(status, text) {
+      const styles = {
+        empty: 'bg-amber-50 text-amber-700 border-amber-200',
+        loading: 'bg-blue-50 text-blue-700 border-blue-200',
+        live: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        error: 'bg-rose-50 text-rose-700 border-rose-200'
+      };
+      const dots = {
+        empty: 'bg-amber-500',
+        loading: 'bg-blue-500 animate-pulse',
+        live: 'bg-emerald-500',
+        error: 'bg-rose-500'
+      };
+      const b = $('connBadge');
+      b.className = `hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${styles[status] || styles.empty}`;
+      b.innerHTML = `<span class="w-2 h-2 rounded-full ${dots[status] || dots.empty}"></span> ${esc(text)}`;
+    }
+
+    async function callGas(payload) {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function autoLoadSheets() {
+      if (!GAS_API_URL) {
+        setBadge('empty', 'Chưa gắn link Script');
+        renderLobby();
+        return;
+      }
+      state.loading = true;
+      $('btnRefresh').disabled = true;
+      setBadge('loading', 'Đang tải Sheet Admin...');
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getDecks`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (Array.isArray(data?.decks)) {
+          state.decks = data.decks;
+          if (data.adminPassword) state.adminPassword = String(data.adminPassword);
+          setBadge('live', 'Đã đồng bộ tự động');
+          showToast(`Đã tải ${state.decks.length} bài tập từ Sheet Admin`);
+        } else {
+          throw new Error('Dữ liệu không hợp lệ');
+        }
+      } catch (err) {
+        setBadge('error', 'Lỗi tải dữ liệu');
+        showToast('Không thể tải dữ liệu từ Sheet Admin');
+      } finally {
+        state.loading = false;
+        $('btnRefresh').disabled = false;
+        if (state.view === 'lobby') renderLobby();
+      }
+    }
+
+    async function syncDecksToAdminSheet() {
+      if (!GAS_API_URL) return true;
+      try {
+        const cleanDecks = state.decks.map((d, i) => ({
+          id: d.id,
+          subject: d.subject,
+          title: d.title,
+          sheetUrl: d.sheetUrl,
+          order: i + 1
+        }));
+        const data = await callGas({ action: 'saveDecks', password: state.adminPassword, decks: cleanDecks });
+        if (!data?.ok) throw new Error(data?.error || 'Lỗi lưu Sheet Admin');
+        return true;
+      } catch (err) {
+        showToast(err.message || 'Lỗi đồng bộ Sheet Admin');
+        return false;
+      }
+    }
+
+    async function loadDeckQuestions(deck) {
+      if (!GAS_API_URL || !deck.sheetUrl) return deck;
+      try {
+        showToast(`Đang tải câu hỏi từ Sheet "${deck.title}"...`);
+        const data = await callGas({ action: 'getQuestions', sheetUrl: deck.sheetUrl });
+        if (Array.isArray(data?.questions)) deck.questions = data.questions;
+        else if (data?.error) showToast(data.error);
+      } catch (err) {
+        showToast('Lỗi tải câu hỏi từ Sheet bài tập');
+      }
+      return deck;
+    }
+
+    function renderMath(el) {
+      if (window.renderMathInElement) {
+        renderMathInElement(el, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}],
+          throwOnError: false
+        });
+      }
+    }
+
+    function normalizeText(s) {
+      return String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    function isShortCorrect(userVal, correctVal) {
+      const uRaw = String(userVal ?? '').replace(/\s+/g, '').replace(',', '.');
+      const cRaw = String(correctVal ?? '').replace(/\s+/g, '').replace(',', '.');
+      if (uRaw !== '' && cRaw !== '' && !Number.isNaN(Number(uRaw)) && !Number.isNaN(Number(cRaw))) {
+        return Math.abs(Number(uRaw) - Number(cRaw)) < 1e-9;
+      }
+      const uText = normalizeText(userVal);
+      return uText !== '' && uText === normalizeText(correctVal);
+    }
+
+    function isQuestionAnswered(q) {
+      const ans = state.answers[q.id];
+      return q.type === 'TF' ? Boolean(ans && Object.keys(ans).length > 0) : Boolean(ans && String(ans).trim());
+    }
+
+    function isQuestionCorrect(q) {
+      const ans = state.answers[q.id];
+      if (q.type === 'MCQ') return ans === q.answer;
+      if (q.type === 'TF') return (q.items || []).every(it => (ans || {})[it.key] === it.answer);
+      if (q.type === 'SHORT') return isShortCorrect(ans, q.answer);
+      return false;
+    }
+
+    function getDeckParts(deck) {
+      return [...new Set((deck.questions || []).map(q => q.part || 'Phần chung'))];
+    }
+
+    function getDeckTypes(deck) {
+      return [...new Set((deck.questions || []).map(q => q.type))];
+    }
+
+    function renderLobby() {
+      const q = normStr(state.search);
+      const filtered = state.decks.filter(d =>
+        !q || normStr(d.subject).includes(q) || normStr(d.title).includes(q)
+      );
+
+      if (!state.decks.length) {
+        $('deckGrid').innerHTML = `<div class="col-span-full card-box p-10 text-center text-slate-400 text-sm">Chưa có bài tập nào. Admin vui lòng đăng nhập để thêm bài tập.</div>`;
+        return;
+      }
+
+      $('deckGrid').innerHTML = filtered.length ? filtered.map(d => {
+        const types = getDeckTypes(d);
+        const parts = getDeckParts(d);
+        const qCount = d.questions?.length || 0;
+        return `<article class="card-box p-5 flex flex-col justify-between gap-4 hover:border-indigo-300 transition-colors">
+          <div class="space-y-2.5">
+            <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700">${esc(d.subject)}</span>
+            <h3 class="font-bold text-slate-900 text-base leading-snug">${esc(d.title)}</h3>
+            <div class="flex flex-wrap gap-1.5">
+              ${types.length ? types.map(t => `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">${esc(TYPE_LABELS[t] || t)}</span>`).join('') : '<span class="text-xs text-indigo-600">Tự động tải Sheet khi mở</span>'}
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-500">${qCount ? `${parts.length} phần • ${qCount} câu` : 'Kết nối Sheet bài tập'}</span>
+            <button data-action="open-detail" data-id="${esc(d.id)}" class="btn-fx px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-xs sm:text-sm font-semibold">
+              Chi tiết →
+            </button>
+          </div>
+        </article>`;
+      }).join('') : `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Không tìm thấy môn học hoặc bài tập phù hợp.</div>`;
+    }
+
+    function renderDetail() {
+      const deck = state.activeDeck;
+      if (!deck) return;
+      const qs = deck.questions || [];
+
+      $('detailSubject').textContent = deck.subject;
+      $('detailTitle').textContent = deck.title;
+      $('detailTotalBadge').textContent = `${qs.length} câu hỏi`;
+
+      const availableTypes = getDeckTypes(deck);
+      $('detailTypeList').innerHTML = availableTypes.length ? availableTypes.map(type => {
+        const count = qs.filter(q => q.type === type).length;
+        const checked = state.selectedTypes.includes(type);
+        return `<button data-action="toggle-type" data-type="${esc(type)}" class="btn-fx p-3.5 rounded-xl border text-left flex items-center justify-between ${checked ? 'border-indigo-600 bg-indigo-50/80 ring-1 ring-indigo-600' : 'border-slate-200 bg-white hover:bg-slate-50'}">
+          <div>
+            <div class="font-bold text-sm ${checked ? 'text-indigo-900' : 'text-slate-800'}">${esc(TYPE_LABELS[type] || type)}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${count} câu có sẵn</div>
+          </div>
+          <span class="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${checked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'}">✓</span>
+        </button>`;
+      }).join('') : `<div class="col-span-full text-xs text-slate-500">Chưa có câu hỏi (kiểm tra link Google Sheet bài tập).</div>`;
+
+      const parts = getDeckParts(deck);
+      $('detailPartList').innerHTML = parts.length ? parts.map(part => {
+        const qsInPart = qs.filter(q => (q.part || 'Phần chung') === part);
+        const matchCount = qsInPart.filter(q => state.selectedTypes.includes(q.type)).length;
+        const checked = state.selectedParts.includes(part);
+        const typeBreakdown = getDeckTypes({ questions: qsInPart }).map(t => TYPE_LABELS[t] || t).join(', ');
+        return `<button data-action="toggle-part" data-part="${esc(part)}" class="btn-fx p-3.5 rounded-xl border text-left flex items-start justify-between gap-3 ${checked ? 'border-indigo-600 bg-indigo-50/80 ring-1 ring-indigo-600' : 'border-slate-200 bg-white hover:bg-slate-50'}">
+          <div>
+            <div class="font-semibold text-sm ${checked ? 'text-indigo-900' : 'text-slate-800'}">${esc(part)}</div>
+            <div class="text-xs text-slate-500 mt-1">${qsInPart.length} câu (${esc(typeBreakdown)}) • Khớp gói: <strong>${matchCount}</strong></div>
+          </div>
+          <span class="w-5 h-5 mt-0.5 shrink-0 rounded-md flex items-center justify-center text-xs font-bold ${checked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'}">✓</span>
+        </button>`;
+      }).join('') : `<div class="col-span-full text-xs text-slate-500">Chưa có dữ liệu phần bài.</div>`;
+
+      const matched = getMatchedQuestions();
+      $('btnLaunchQuiz').disabled = matched.length === 0;
+      if (matched.length === 0) {
+        $('selectionSummary').innerHTML = `<span class="text-slate-600">Hãy chọn <strong>dạng bài</strong> và <strong>phần ôn</strong> bạn muốn làm.</span>`;
+      } else {
+        const breakdown = state.selectedTypes
+          .map(t => {
+            const c = matched.filter(q => q.type === t).length;
+            return c ? `${c} ${TYPE_LABELS[t] || t}` : '';
+          })
+          .filter(Boolean)
+          .join(', ');
+        $('selectionSummary').innerHTML = `Đã chọn: <strong class="text-indigo-700">${matched.length} câu hỏi</strong> (${esc(breakdown)})`;
+      }
+    }
+
+    function getMatchedQuestions() {
+      const deck = state.activeDeck;
+      if (!deck) return [];
+      return (deck.questions || []).filter(q =>
+        state.selectedTypes.includes(q.type) &&
+        state.selectedParts.includes(q.part || 'Phần chung')
+      );
+    }
+
+    function renderQuiz() {
+      const deck = state.activeDeck;
+      const list = state.quizQuestions;
+      if (!deck) return;
+      $('quizTitle').textContent = deck.title;
+      $('quizMeta').textContent = `${deck.subject} • ${list.length} câu đã chọn`;
+
+      $('questionArea').innerHTML = list.map((q, idx) => {
+        const qNum = idx + 1;
+        const userAns = state.answers[q.id];
+        let bodyHtml = '';
+
+        if (q.type === 'MCQ') {
+          bodyHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
+            ${Object.entries(q.options || {}).map(([k, val]) => {
+              const selected = userAns === k;
+              let cls = selected ? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-600' : 'border-slate-200 hover:bg-slate-50';
+              if (state.submitted) {
+                if (k === q.answer) cls = 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500';
+                else if (selected) cls = 'border-rose-500 bg-rose-50 text-rose-900';
+              }
+              return `<button ${state.submitted ? 'disabled' : ''} data-action="pick-mcq" data-qid="${esc(q.id)}" data-val="${esc(k)}" class="btn-fx text-left px-3.5 py-2.5 rounded-xl border text-sm flex items-start gap-2.5 ${cls}">
+                <span class="font-bold">${esc(k)}.</span><span>${esc(val)}</span>
+              </button>`;
+            }).join('')}
+          </div>`;
+        } else if (q.type === 'TF') {
+          const tfAns = userAns || {};
+          bodyHtml = `<div class="space-y-2 mt-3">
+            ${(q.items || []).map(it => {
+              const picked = tfAns[it.key];
+              return `<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                <div class="text-sm"><span class="font-bold mr-1.5">${esc(it.key)})</span>${esc(it.text)}</div>
+                <div class="flex gap-1.5 shrink-0">
+                  ${['Đ', 'S'].map(opt => {
+                    const isPicked = picked === opt;
+                    let cls = isPicked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300';
+                    if (state.submitted) {
+                      if (opt === it.answer) cls = 'bg-emerald-600 text-white border-emerald-600';
+                      else if (isPicked) cls = 'bg-rose-600 text-white border-rose-600';
+                    }
+                    return `<button ${state.submitted ? 'disabled' : ''} data-action="pick-tf" data-qid="${esc(q.id)}" data-key="${esc(it.key)}" data-val="${opt}" class="btn-fx px-3 py-1 rounded-lg border text-xs font-bold ${cls}">${opt === 'Đ' ? 'Đúng' : 'Sai'}</button>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        } else if (q.type === 'SHORT') {
+          const shortOk = state.submitted && isShortCorrect(userAns, q.answer);
+          const inputCls = state.submitted
+            ? (shortOk ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : 'border-rose-500 bg-rose-50 text-rose-900')
+            : 'border-slate-300';
+          bodyHtml = `<div class="mt-3">
+            <input ${state.submitted ? 'disabled' : ''} data-action="input-short" data-qid="${esc(q.id)}" type="text" value="${esc(userAns || '')}" placeholder="Nhập đáp án ngắn..." class="w-full sm:w-72 px-3.5 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputCls}">
+            ${state.submitted ? `<p class="text-xs font-semibold ${shortOk ? 'text-emerald-700' : 'text-rose-700'} mt-2">${shortOk ? 'Chính xác!' : `Đáp án chuẩn: ${esc(q.answer)}`}</p>` : ''}
+          </div>`;
+        }
+
+        const explainHtml = state.submitted && q.explain
+          ? `<div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed"><strong>Lời giải từ Sheet:</strong> ${esc(q.explain)}</div>`
+          : '';
+
+        return `<article id="qcard-${esc(q.id)}" class="card-box p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">Câu ${qNum}</span>
+              <span class="text-xs text-indigo-600 font-medium">${esc(q.part || '')}</span>
+            </div>
+            <span class="text-xs text-slate-400 font-medium">${esc(TYPE_LABELS[q.type] || q.type)}</span>
+          </div>
+          <p class="text-sm sm:text-base text-slate-800 leading-relaxed">${esc(q.text)}</p>
+          ${bodyHtml}
+          ${explainHtml}
+        </article>`;
+      }).join('');
+
+      renderMath($('questionArea'));
+    }
+
+    function renderAdminModal() {
+      $('adminListCount').textContent = state.decks.length;
+      const isCreate = state.adminTab === 'create';
+      $('adminPanelCreate').classList.toggle('hidden', !isCreate);
+      $('adminPanelList').classList.toggle('hidden', isCreate);
+
+      $('tabBtnCreate').className = `btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold ${isCreate ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`;
+      $('tabBtnList').className = `btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold ${!isCreate ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`;
+
+      if (!isCreate) renderManageList();
+    }
+
+    function renderManageList() {
+      $('manageDeckList').innerHTML = state.decks.length ? state.decks.map((d, idx) => {
+        const isEditing = state.editingDeckId === d.id;
+        return `<div class="rounded-xl border ${isEditing ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200 bg-white'} p-3 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-400">#${idx + 1}</span>
+                <span class="text-xs font-semibold text-indigo-600">${esc(d.subject)}</span>
+              </div>
+              <div class="text-sm font-bold text-slate-800 truncate mt-0.5">${esc(d.title)}</div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button data-action="toggle-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-2.5 py-1 rounded-lg ${isEditing ? 'bg-indigo-600 text-white' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'} text-xs font-semibold">Chi tiết</button>
+              <button data-action="move-deck" data-idx="${idx}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} class="btn-fx px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↑</button>
+              <button data-action="move-deck" data-idx="${idx}" data-dir="1" ${idx === state.decks.length - 1 ? 'disabled' : ''} class="btn-fx px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↓</button>
+              <button data-action="del-deck" data-idx="${idx}" class="btn-fx px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Xóa</button>
+            </div>
+          </div>
+
+          ${isEditing ? `<div class="pt-3 border-t border-indigo-200 space-y-2.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Môn học</label>
+                <input id="editSub-${esc(d.id)}" type="text" value="${esc(d.subject)}" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Tên bài tập</label>
+                <input id="editTitle-${esc(d.id)}" type="text" value="${esc(d.title)}" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Link Google Sheet bài tập</label>
+              <input id="editUrl-${esc(d.id)}" type="url" value="${esc(d.sheetUrl || '')}" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="flex justify-end gap-2">
+              <button data-action="cancel-edit-deck" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold">Đóng</button>
+              <button data-action="save-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">Lưu thay đổi</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('') : `<div class="text-center py-8 text-sm text-slate-400">Chưa có bài tập nào trong kho.</div>`;
+    }
+
+    function updateAdminBtn() {
+      const b = $('btnAdmin');
+      if (state.isAdmin) {
+        b.textContent = 'Admin ✓';
+        b.className = 'btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white';
+      } else {
+        b.textContent = 'Admin';
+        b.className = 'btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white';
+      }
+    }
+
+    function switchView(view) {
+      state.view = view;
+      $('viewLobby').classList.toggle('hidden', view !== 'lobby');
+      $('viewDetail').classList.toggle('hidden', view !== 'detail');
+      $('viewQuiz').classList.toggle('hidden', view !== 'quiz');
+      if (view === 'lobby') renderLobby();
+      else if (view === 'detail') renderDetail();
+      else renderQuiz();
+    }
+
+    document.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const act = btn.dataset.action;
+
+      if (act === 'go-home') switchView('lobby');
+      else if (act === 'go-detail') switchView('detail');
+      else if (act === 'refresh-data') autoLoadSheets();
+      else if (act === 'open-admin') {
+        if (state.isAdmin) {
+          state.editingDeckId = null;
+          renderAdminModal();
+          $('manageModal').showModal();
+        } else {
+          $('inpAdminPass').value = '';
+          $('adminLoginModal').showModal();
+        }
+      } else if (act === 'close-login') {
+        $('adminLoginModal').close();
+      } else if (act === 'close-manage') {
+        $('manageModal').close();
+      } else if (act === 'switch-admin-tab') {
+        state.adminTab = btn.dataset.tab;
+        state.editingDeckId = null;
+        renderAdminModal();
+      } else if (act === 'admin-logout') {
+        state.isAdmin = false;
+        state.editingDeckId = null;
+        updateAdminBtn();
+        $('manageModal').close();
+        showToast('Đã đăng xuất chế độ Admin');
+      } else if (act === 'toggle-edit-deck') {
+        const id = btn.dataset.id;
+        state.editingDeckId = state.editingDeckId === id ? null : id;
+        renderManageList();
+      } else if (act === 'cancel-edit-deck') {
+        state.editingDeckId = null;
+        renderManageList();
+      } else if (act === 'save-edit-deck') {
+        const id = btn.dataset.id;
+        const deck = state.decks.find(d => d.id === id);
+        if (!deck) return;
+        const sub = $(`editSub-${id}`)?.value.trim();
+        const title = $(`editTitle-${id}`)?.value.trim();
+        const url = $(`editUrl-${id}`)?.value.trim();
+        if (!sub || !title || !url) {
+          showToast('Vui lòng nhập đủ Môn, Tên bài và Link Sheet');
+          return;
+        }
+        deck.subject = sub;
+        deck.title = title;
+        deck.sheetUrl = url;
+        state.editingDeckId = null;
+        await syncDecksToAdminSheet();
+        renderAdminModal();
+        renderLobby();
+        showToast('Đã lưu thay đổi bài tập');
+      } else if (act === 'move-deck') {
+        const idx = Number(btn.dataset.idx);
+        const target = idx + Number(btn.dataset.dir);
+        if (target < 0 || target >= state.decks.length) return;
+        [state.decks[idx], state.decks[target]] = [state.decks[target], state.decks[idx]];
+        await syncDecksToAdminSheet();
+        renderAdminModal();
+        renderLobby();
+      } else if (act === 'del-deck') {
+        const removed = state.decks.splice(Number(btn.dataset.idx), 1)[0];
+        if (removed && state.editingDeckId === removed.id) state.editingDeckId = null;
+        await syncDecksToAdminSheet();
+        renderAdminModal();
+        renderLobby();
+        showToast('Đã xóa bài tập khỏi danh sách');
+      } else if (act === 'open-detail') {
+        const deck = state.decks.find(d => d.id === btn.dataset.id);
+        if (!deck) return;
+        await loadDeckQuestions(deck);
+        state.activeDeck = deck;
+        state.selectedTypes = [];
+        state.selectedParts = [];
+        switchView('detail');
+      } else if (act === 'toggle-type') {
+        const t = btn.dataset.type;
+        state.selectedTypes = state.selectedTypes.includes(t)
+          ? state.selectedTypes.filter(x => x !== t)
+          : [...state.selectedTypes, t];
+        renderDetail();
+      } else if (act === 'toggle-part') {
+        const p = btn.dataset.part;
+        state.selectedParts = state.selectedParts.includes(p)
+          ? state.selectedParts.filter(x => x !== p)
+          : [...state.selectedParts, p];
+        renderDetail();
+      } else if (act === 'preset-types') {
+        const avail = getDeckTypes(state.activeDeck);
+        const p = btn.dataset.preset;
+        if (p === 'ALL') state.selectedTypes = [...avail];
+        else if (p === 'MCQ+TF') state.selectedTypes = avail.filter(t => t === 'MCQ' || t === 'TF');
+        else state.selectedTypes = avail.filter(t => t === p);
+        renderDetail();
+      } else if (act === 'parts-all') {
+        state.selectedParts = getDeckParts(state.activeDeck);
+        renderDetail();
+      } else if (act === 'parts-none') {
+        state.selectedParts = [];
+        renderDetail();
+      } else if (act === 'launch-quiz') {
+        state.quizQuestions = getMatchedQuestions();
+        if (!state.quizQuestions.length) return;
+        state.answers = {};
+        state.submitted = false;
+        $('quizScoreBadge').classList.add('hidden');
+        $('btnSubmitQuiz').classList.remove('hidden');
+        switchView('quiz');
+      } else if (act === 'pick-mcq') {
+        state.answers[btn.dataset.qid] = btn.dataset.val;
+        renderQuiz();
+      } else if (act === 'pick-tf') {
+        const qid = btn.dataset.qid;
+        state.answers[qid] = { ...(state.answers[qid] || {}), [btn.dataset.key]: btn.dataset.val };
+        renderQuiz();
+      } else if (act === 'ask-submit') {
+        const total = state.quizQuestions.length;
+        const done = state.quizQuestions.filter(isQuestionAnswered).length;
+        const left = total - done;
+        $('confirmSubmitMsg').textContent = left > 0
+          ? `Bạn đã làm ${done}/${total} câu (còn ${left} câu chưa chọn). Bạn có chắc chắn muốn nộp bài ngay không?`
+          : `Bạn đã hoàn thành ${done}/${total} câu. Bạn có chắc chắn muốn nộp bài không?`;
+        $('confirmSubmitModal').showModal();
+      } else if (act === 'cancel-submit') {
+        $('confirmSubmitModal').close();
+      } else if (act === 'confirm-submit') {
+        $('confirmSubmitModal').close();
+        state.submitted = true;
+        const total = state.quizQuestions.length;
+        const right = state.quizQuestions.filter(isQuestionCorrect).length;
+        $('btnSubmitQuiz').classList.add('hidden');
+        $('quizScoreBadge').textContent = `Đạt ${right}/${total} câu`;
+        $('quizScoreBadge').classList.remove('hidden');
+        renderQuiz();
+        showToast(`Đã nộp bài: Đạt ${right}/${total} câu`);
+      }
+    });
+
+    $('adminLoginForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const pw = $('inpAdminPass').value;
+      if (pw === state.adminPassword) {
+        state.isAdmin = true;
+        state.adminTab = 'create';
+        state.editingDeckId = null;
+        updateAdminBtn();
+        $('adminLoginModal').close();
+        renderAdminModal();
+        $('manageModal').showModal();
+        showToast('Đăng nhập Admin thành công');
+      } else {
+        showToast('Mật khẩu Admin không đúng');
+      }
+    });
+
+    $('changePassForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const oldPw = $('inpOldPass').value;
+      const newPw = $('inpNewPass').value.trim();
+      if (oldPw !== state.adminPassword) {
+        showToast('Mật khẩu hiện tại không đúng');
+        return;
+      }
+      if (newPw.length < 4) {
+        showToast('Mật khẩu mới cần ít nhất 4 ký tự');
+        return;
+      }
+      const btn = $('btnChangePass');
+      btn.disabled = true;
+      try {
+        if (GAS_API_URL) {
+          const res = await callGas({ action: 'changePassword', oldPassword: oldPw, newPassword: newPw });
+          if (!res?.ok) throw new Error(res?.error || 'Lỗi đổi mật khẩu');
+        }
+        state.adminPassword = newPw;
+        localStorage.setItem('quiz_admin_pw', newPw);
+        e.target.reset();
+        showToast('Đã đổi mật khẩu Admin thành công');
+      } catch (err) {
+        showToast(err.message || 'Không thể đổi mật khẩu');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    $('createDeckForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const subject = $('inpSubject').value.trim();
+      const title = $('inpTitle').value.trim();
+      const sheetUrl = $('inpSheetUrl').value.trim();
+      if (!subject || !title || !sheetUrl) return;
+      const btn = $('btnCreateDeck');
+      btn.disabled = true;
+      state.decks.push({
+        id: 'deck-' + Date.now(),
+        subject,
+        title,
+        sheetUrl,
+        questions: []
+      });
+      await syncDecksToAdminSheet();
+      btn.disabled = false;
+      e.target.reset();
+      renderAdminModal();
+      renderLobby();
+      showToast(`Đã xuất "${title}" (${subject})`);
+    });
+
+    document.addEventListener('input', e => {
+      if (e.target.id === 'searchInput') {
+        state.search = e.target.value;
+        renderLobby();
+      } else if (e.target.dataset.action === 'input-short') {
+        state.answers[e.target.dataset.qid] = e.target.value;
+      }
+    });
+
+    autoLoadSheets();
+  </script>
+</body>
+</html>
