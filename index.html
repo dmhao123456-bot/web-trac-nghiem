@@ -113,22 +113,25 @@
 
     <!-- MÀN HÌNH 3: KHÔNG GIAN LÀM BÀI -->
     <section id="viewQuiz" class="hidden space-y-5 max-w-4xl mx-auto">
-      <div class="card-box p-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2 sm:gap-3">
-          <button data-action="go-detail" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700">
-            ← Đổi gói ôn
-          </button>
-          <div>
-            <h2 id="quizTitle" class="font-bold text-slate-900 text-base sm:text-lg">Tên đề thi</h2>
-            <p id="quizMeta" class="text-xs text-slate-500">Chuyên đề • 0 câu</p>
+      <div class="card-box p-3.5 sm:p-4 sticky top-[4.25rem] z-20 bg-white/95 backdrop-blur-sm shadow-md space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2 sm:gap-3">
+            <button data-action="go-detail" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700">
+              ← Đổi gói ôn
+            </button>
+            <div>
+              <h2 id="quizTitle" class="font-bold text-slate-900 text-base sm:text-lg leading-snug">Tên đề thi</h2>
+              <p id="quizMeta" class="text-xs text-slate-500">Chuyên đề • 0 câu</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="quizScoreBadge" class="hidden px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs sm:text-sm border border-emerald-200"></span>
+            <button id="btnSubmitQuiz" data-action="ask-submit" class="btn-fx px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm">
+              Nộp bài
+            </button>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <span id="quizScoreBadge" class="hidden px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-semibold text-sm border border-emerald-200"></span>
-          <button id="btnSubmitQuiz" data-action="ask-submit" class="btn-fx px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm">
-            Nộp bài
-          </button>
-        </div>
+        <div id="resultFilterBar" class="hidden pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-2"></div>
       </div>
 
       <div id="questionArea" class="space-y-4"></div>
@@ -240,6 +243,7 @@
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const normStr = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+    const cleanPartName = p => String(p || 'Phần chung').replace(/\s*\(\s*\d+\s*câu\s*\)\s*$/i, '').trim() || 'Phần chung';
 
     const TYPE_LABELS = { MCQ: 'Trắc nghiệm', TF: 'Đúng / Sai', SHORT: 'Trả lời ngắn' };
 
@@ -253,6 +257,7 @@
       quizQuestions: [],
       answers: {},
       submitted: false,
+      resultFilter: 'all',
       loading: false,
       isAdmin: false,
       adminTab: 'create',
@@ -396,7 +401,7 @@
     }
 
     function getDeckParts(deck) {
-      return [...new Set((deck.questions || []).map(q => q.part || 'Phần chung'))];
+      return [...new Set((deck.questions || []).map(q => cleanPartName(q.part)))];
     }
 
     function getDeckTypes(deck) {
@@ -460,7 +465,7 @@
 
       const parts = getDeckParts(deck);
       $('detailPartList').innerHTML = parts.length ? parts.map(part => {
-        const qsInPart = qs.filter(q => (q.part || 'Phần chung') === part);
+        const qsInPart = qs.filter(q => cleanPartName(q.part) === part);
         const matchCount = qsInPart.filter(q => state.selectedTypes.includes(q.type)).length;
         const checked = state.selectedParts.includes(part);
         const typeBreakdown = getDeckTypes({ questions: qsInPart }).map(t => TYPE_LABELS[t] || t).join(', ');
@@ -494,7 +499,7 @@
       if (!deck) return [];
       return (deck.questions || []).filter(q =>
         state.selectedTypes.includes(q.type) &&
-        state.selectedParts.includes(q.part || 'Phần chung')
+        state.selectedParts.includes(cleanPartName(q.part))
       );
     }
 
@@ -505,7 +510,30 @@
       $('quizTitle').textContent = deck.title;
       $('quizMeta').textContent = `${deck.subject} • ${list.length} câu đã chọn`;
 
-      $('questionArea').innerHTML = list.map((q, idx) => {
+      const filterBar = $('resultFilterBar');
+      if (state.submitted) {
+        const rightCount = list.filter(isQuestionCorrect).length;
+        const wrongCount = list.length - rightCount;
+        const tabs = [
+          { key: 'all', label: `Tất cả (${list.length})` },
+          { key: 'correct', label: `Chỉ câu đúng (${rightCount})` },
+          { key: 'wrong', label: `Chỉ câu sai (${wrongCount})` }
+        ];
+        filterBar.innerHTML = tabs.map(t => {
+          const active = state.resultFilter === t.key;
+          return `<button data-action="filter-result" data-filter="${t.key}" class="btn-fx px-3 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">${t.label}</button>`;
+        }).join('');
+        filterBar.classList.remove('hidden');
+      } else {
+        filterBar.classList.add('hidden');
+      }
+
+      const cardsHtml = list.map((q, idx) => {
+        if (state.submitted) {
+          const ok = isQuestionCorrect(q);
+          if (state.resultFilter === 'correct' && !ok) return '';
+          if (state.resultFilter === 'wrong' && ok) return '';
+        }
         const qNum = idx + 1;
         const userAns = state.answers[q.id];
         let bodyHtml = '';
@@ -556,6 +584,10 @@
           </div>`;
         }
 
+        const imgHtml = q.img
+          ? `<div class="mt-3"><img src="${esc(q.img)}" alt="Hình minh họa câu ${qNum}" loading="lazy" class="max-h-80 rounded-xl border border-slate-200 object-contain bg-white"></div>`
+          : '';
+
         const explainHtml = state.submitted && q.explain
           ? `<div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed"><strong>Lời giải từ Sheet:</strong> ${esc(q.explain)}</div>`
           : '';
@@ -564,16 +596,18 @@
           <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div class="flex items-center gap-2">
               <span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">Câu ${qNum}</span>
-              <span class="text-xs text-indigo-600 font-medium">${esc(q.part || '')}</span>
+              <span class="text-xs text-indigo-600 font-medium">${esc(cleanPartName(q.part))}</span>
             </div>
             <span class="text-xs text-slate-400 font-medium">${esc(TYPE_LABELS[q.type] || q.type)}</span>
           </div>
-          <p class="text-sm sm:text-base text-slate-800 leading-relaxed">${esc(q.text)}</p>
+          <p class="text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line">${esc(q.text)}</p>
+          ${imgHtml}
           ${bodyHtml}
           ${explainHtml}
         </article>`;
       }).join('');
 
+      $('questionArea').innerHTML = cardsHtml || `<div class="card-box p-8 text-center text-sm text-slate-500">Không có câu hỏi nào trong mục này.</div>`;
       renderMath($('questionArea'));
     }
 
@@ -764,6 +798,7 @@
         if (!state.quizQuestions.length) return;
         state.answers = {};
         state.submitted = false;
+        state.resultFilter = 'all';
         $('quizScoreBadge').classList.add('hidden');
         $('btnSubmitQuiz').classList.remove('hidden');
         switchView('quiz');
@@ -773,6 +808,9 @@
       } else if (act === 'pick-tf') {
         const qid = btn.dataset.qid;
         state.answers[qid] = { ...(state.answers[qid] || {}), [btn.dataset.key]: btn.dataset.val };
+        renderQuiz();
+      } else if (act === 'filter-result') {
+        state.resultFilter = btn.dataset.filter;
         renderQuiz();
       } else if (act === 'ask-submit') {
         const total = state.quizQuestions.length;
@@ -787,13 +825,15 @@
       } else if (act === 'confirm-submit') {
         $('confirmSubmitModal').close();
         state.submitted = true;
+        state.resultFilter = 'all';
         const total = state.quizQuestions.length;
         const right = state.quizQuestions.filter(isQuestionCorrect).length;
+        const pct = total ? Math.round((right / total) * 100) : 0;
         $('btnSubmitQuiz').classList.add('hidden');
-        $('quizScoreBadge').textContent = `Đạt ${right}/${total} câu`;
+        $('quizScoreBadge').textContent = `Đúng ${right}/${total} câu (${pct}%)`;
         $('quizScoreBadge').classList.remove('hidden');
         renderQuiz();
-        showToast(`Đã nộp bài: Đạt ${right}/${total} câu`);
+        showToast(`Đã nộp bài: Đúng ${right}/${total} câu (${pct}%)`);
       }
     });
 
