@@ -272,6 +272,18 @@
     </div>
   </dialog>
 
+  <!-- MODAL XÁC NHẬN RỜI KHỎI GÓI -->
+  <dialog id="confirmLeaveModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-sm w-[92%] shadow-xl border border-slate-200">
+    <div class="p-5 space-y-4">
+      <h3 class="font-bold text-slate-900 text-base">Rời khỏi gói ôn tập?</h3>
+      <p class="text-sm text-slate-600 leading-relaxed">Bạn có chắc chắn muốn rời khỏi gói bài tập hiện tại không? Các câu đã chọn sẽ không được lưu.</p>
+      <div class="flex justify-end gap-2 pt-1">
+        <button data-action="cancel-leave" class="btn-fx px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Ở lại làm tiếp</button>
+        <button data-action="confirm-leave" class="btn-fx px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Chắc chắn rời</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- MỤC ĐANG TẢI VỀ (HIỂN THỊ TRÊN CẢ MÁY TÍNH & ĐIỆN THOẠI) -->
   <div id="loadingOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/25 backdrop-blur-[1px] flex items-center justify-center px-4">
     <div class="bg-white border border-slate-200 rounded-2xl shadow-xl px-6 py-4 flex items-center gap-3.5 max-w-xs w-full justify-center">
@@ -304,6 +316,7 @@
       answers: {},
       submitted: false,
       resultFilter: 'all',
+      pendingLeaveView: null,
       loading: false,
       isAdmin: false,
       adminTab: 'create',
@@ -803,14 +816,31 @@
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
+    function requestLeaveQuiz(targetView) {
+      if (state.view === 'quiz' && !state.submitted) {
+        state.pendingLeaveView = targetView;
+        $('confirmLeaveModal').showModal();
+        return;
+      }
+      switchView(targetView);
+    }
+
     document.addEventListener('click', async e => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const act = btn.dataset.action;
 
-      if (act === 'go-home') switchView('lobby');
-      else if (act === 'go-detail') switchView('detail');
-      else if (act === 'refresh-data') autoLoadSheets();
+      if (act === 'go-home') requestLeaveQuiz('lobby');
+      else if (act === 'go-detail') requestLeaveQuiz('detail');
+      else if (act === 'cancel-leave') {
+        state.pendingLeaveView = null;
+        $('confirmLeaveModal').close();
+      } else if (act === 'confirm-leave') {
+        const target = state.pendingLeaveView || 'detail';
+        state.pendingLeaveView = null;
+        $('confirmLeaveModal').close();
+        switchView(target);
+      } else if (act === 'refresh-data') autoLoadSheets();
       else if (act === 'toggle-theme') {
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('quiz_theme', state.theme);
