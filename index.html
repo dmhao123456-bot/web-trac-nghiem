@@ -9,132 +9,133 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
   <style>
-    .btn-fx { transition: all 0.18s ease; }
+    .btn-fx { transition: all 0.18s ease; touch-action: manipulation; }
     .btn-fx:active { transform: scale(0.96); }
     .card-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+    .katex-display { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 0.25rem 0; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased overflow-x-hidden">
 
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2.5 cursor-pointer" data-action="go-home">
-        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">Q</div>
-        <div>
-          <h1 class="font-bold text-slate-900 leading-tight text-base sm:text-lg">Luyện Tập Trực Tuyến</h1>
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0 cursor-pointer" data-action="go-home">
+        <div class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-sm">Q</div>
+        <div class="min-w-0">
+          <h1 class="font-bold text-slate-900 leading-tight text-sm sm:text-lg truncate">Luyện Tập Trực Tuyến</h1>
           <p class="text-xs text-slate-500 hidden sm:block">Tự động đồng bộ kho bài tập</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <span id="connBadge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
           <span class="w-2 h-2 rounded-full bg-amber-500"></span> Chưa gắn link Script
         </span>
-        <button id="btnAdmin" data-action="open-admin" class="btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white">
+        <button id="btnAdmin" data-action="open-admin" class="btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white">
           Admin
         </button>
-        <button id="btnRefresh" data-action="refresh-data" class="btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">
+        <button id="btnRefresh" data-action="refresh-data" class="btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">
           Làm mới
         </button>
       </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- MÀN HÌNH 1: SẢNH CHỌN MỤC -->
-    <section id="viewLobby" class="space-y-6">
-      <div class="card-box p-5 sm:p-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0">
-        <h2 class="text-xl sm:text-2xl font-bold">Chào mừng bạn đến với kho bài tập</h2>
-        <p class="text-indigo-100 text-sm mt-1">Gõ tên môn học hoặc tên bài để tìm nhanh, sau đó bấm Chi tiết để tự chọn gói ôn tập.</p>
+    <section id="viewLobby" class="space-y-4 sm:space-y-6">
+      <div class="card-box p-4 sm:p-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0">
+        <h2 class="text-lg sm:text-2xl font-bold">Chào mừng bạn đến với kho bài tập</h2>
+        <p class="text-indigo-100 text-xs sm:text-sm mt-1">Gõ tên môn học hoặc tên bài để tìm nhanh, sau đó bấm Chi tiết để tự chọn gói ôn tập.</p>
       </div>
 
       <div class="flex items-center gap-3">
-        <input id="searchInput" type="search" placeholder="Gõ tên môn học hoặc tên bài tập..." class="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input id="searchInput" type="search" placeholder="Gõ tên môn học hoặc tên bài tập..." class="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 bg-white text-base sm:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
 
-      <div id="deckGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <div id="deckGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"></div>
     </section>
 
     <!-- MÀN HÌNH 2: CHI TIẾT & TÙY CHỌN GÓI ÔN TẬP -->
-    <section id="viewDetail" class="hidden space-y-5 max-w-4xl mx-auto">
-      <div class="card-box p-5 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <button data-action="go-home" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700">
-            ← Sảnh chính
+    <section id="viewDetail" class="hidden space-y-4 sm:space-y-5 max-w-4xl mx-auto">
+      <div class="card-box p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button data-action="go-home" class="btn-fx shrink-0 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-700">
+            ← Sảnh
           </button>
-          <div>
+          <div class="min-w-0">
             <span id="detailSubject" class="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700">Môn</span>
-            <h2 id="detailTitle" class="font-bold text-slate-900 text-lg sm:text-xl mt-1">Tên chuyên đề</h2>
+            <h2 id="detailTitle" class="font-bold text-slate-900 text-base sm:text-xl mt-1 break-words">Tên chuyên đề</h2>
           </div>
         </div>
-        <div id="detailTotalBadge" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600"></div>
+        <div id="detailTotalBadge" class="text-xs font-semibold px-3 py-1 rounded-xl bg-slate-100 text-slate-600 shrink-0"></div>
       </div>
 
       <!-- BƯỚC 1: CHỌN GÓI DẠNG BÀI -->
-      <div class="card-box p-5 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="card-box p-4 sm:p-5 space-y-3.5 sm:space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div>
-            <h3 class="font-bold text-slate-900 text-base">1. Chọn gói dạng bài muốn ôn</h3>
+            <h3 class="font-bold text-slate-900 text-sm sm:text-base">1. Chọn gói dạng bài muốn ôn</h3>
             <p class="text-xs text-slate-500">Tự chọn một dạng hoặc kết hợp nhiều dạng cùng lúc.</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
-            <button data-action="preset-types" data-preset="MCQ" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Trắc nghiệm</button>
-            <button data-action="preset-types" data-preset="TF" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Đúng / Sai</button>
-            <button data-action="preset-types" data-preset="MCQ+TF" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Kết hợp TN + Đ/S</button>
-            <button data-action="preset-types" data-preset="ALL" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Tất cả</button>
+            <button data-action="preset-types" data-preset="MCQ" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Trắc nghiệm</button>
+            <button data-action="preset-types" data-preset="TF" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Đúng / Sai</button>
+            <button data-action="preset-types" data-preset="MCQ+TF" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Kết hợp TN + Đ/S</button>
+            <button data-action="preset-types" data-preset="ALL" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Tất cả</button>
           </div>
         </div>
-        <div id="detailTypeList" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+        <div id="detailTypeList" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3"></div>
       </div>
 
       <!-- BƯỚC 2: CHỌN TỪNG PHẦN HOẶC ÔN HẾT -->
-      <div class="card-box p-5 space-y-4">
+      <div class="card-box p-4 sm:p-5 space-y-3.5 sm:space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 class="font-bold text-slate-900 text-base">2. Chọn phần / bài muốn ôn</h3>
+            <h3 class="font-bold text-slate-900 text-sm sm:text-base">2. Chọn phần / bài muốn ôn</h3>
             <p class="text-xs text-slate-500">Chọn từng phần lẻ để ôn sâu hoặc chọn ôn hết toàn bộ chuyên đề.</p>
           </div>
           <div class="flex gap-2">
-            <button data-action="parts-all" class="btn-fx px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Chọn ôn hết</button>
-            <button data-action="parts-none" class="btn-fx px-3 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">Bỏ chọn</button>
+            <button data-action="parts-all" class="btn-fx px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Chọn ôn hết</button>
+            <button data-action="parts-none" class="btn-fx px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">Bỏ chọn</button>
           </div>
         </div>
-        <div id="detailPartList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        <div id="detailPartList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3"></div>
       </div>
 
       <!-- THANH BẮT ĐẦU -->
-      <div class="card-box p-4 bg-indigo-50/70 border-indigo-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div id="selectionSummary" class="text-sm text-slate-700 font-medium"></div>
-        <button id="btnLaunchQuiz" data-action="launch-quiz" class="btn-fx w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-sm">
+      <div class="card-box p-4 bg-indigo-50/70 border-indigo-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div id="selectionSummary" class="text-xs sm:text-sm text-slate-700 font-medium"></div>
+        <button id="btnLaunchQuiz" data-action="launch-quiz" class="btn-fx w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-sm">
           Bắt đầu ôn tập →
         </button>
       </div>
     </section>
 
     <!-- MÀN HÌNH 3: KHÔNG GIAN LÀM BÀI -->
-    <section id="viewQuiz" class="hidden space-y-5 max-w-4xl mx-auto">
-      <div class="card-box p-3.5 sm:p-4 sticky top-[4.25rem] z-20 bg-white/95 backdrop-blur-sm shadow-md space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-2 sm:gap-3">
-            <button data-action="go-detail" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700">
-              ← Đổi gói ôn
+    <section id="viewQuiz" class="hidden space-y-4 sm:space-y-5 max-w-4xl mx-auto">
+      <div class="card-box p-2.5 sm:p-4 sticky top-14 sm:top-16 z-20 bg-white/95 backdrop-blur-sm shadow-md space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <button data-action="go-detail" class="btn-fx shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-700">
+              ← Đổi gói
             </button>
-            <div>
-              <h2 id="quizTitle" class="font-bold text-slate-900 text-base sm:text-lg leading-snug">Tên đề thi</h2>
-              <p id="quizMeta" class="text-xs text-slate-500">Chuyên đề • 0 câu</p>
+            <div class="min-w-0">
+              <h2 id="quizTitle" class="font-bold text-slate-900 text-sm sm:text-lg leading-snug truncate">Tên đề thi</h2>
+              <p id="quizMeta" class="text-[11px] sm:text-xs text-slate-500 truncate">Chuyên đề • 0 câu</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span id="quizScoreBadge" class="hidden px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs sm:text-sm border border-emerald-200"></span>
-            <button id="btnSubmitQuiz" data-action="ask-submit" class="btn-fx px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm">
+          <div class="flex items-center gap-2 shrink-0">
+            <span id="quizScoreBadge" class="hidden px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs sm:text-sm border border-emerald-200 whitespace-nowrap"></span>
+            <button id="btnSubmitQuiz" data-action="ask-submit" class="btn-fx px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-sm whitespace-nowrap">
               Nộp bài
             </button>
           </div>
         </div>
-        <div id="resultFilterBar" class="hidden pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-2"></div>
+        <div id="resultFilterBar" class="hidden pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 sm:gap-2"></div>
       </div>
 
-      <div id="questionArea" class="space-y-4"></div>
+      <div id="questionArea" class="space-y-3.5 sm:space-y-4"></div>
     </section>
   </main>
 
@@ -143,10 +144,10 @@
     <form id="adminLoginForm" class="p-5 space-y-4">
       <div class="flex items-center justify-between">
         <h3 class="font-bold text-slate-900 text-base">Đăng nhập Admin</h3>
-        <button type="button" data-action="close-login" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+        <button type="button" data-action="close-login" class="text-slate-400 hover:text-slate-600 text-lg font-bold px-1">✕</button>
       </div>
       <p class="text-xs text-slate-500">Chỉ Admin mới có quyền tạo bài, gắn link Google Sheet bài tập, sắp xếp và quản lý hệ thống.</p>
-      <input id="inpAdminPass" type="password" required placeholder="Nhập mật khẩu Admin..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <input id="inpAdminPass" type="password" required placeholder="Nhập mật khẩu Admin..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       <div class="flex justify-end gap-2">
         <button type="button" data-action="close-login" class="btn-fx px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium">Hủy</button>
         <button type="submit" class="btn-fx px-4 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-sm font-semibold">Đăng nhập</button>
@@ -156,20 +157,20 @@
 
   <!-- MODAL QUẢN TRỊ ADMIN (2 PHẦN CHUYỂN QUA LẠI) -->
   <dialog id="manageModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-2xl w-[94%] shadow-xl border border-slate-200">
-    <div class="p-5 space-y-4 max-h-[88vh] overflow-y-auto">
-      <div class="flex items-center justify-between">
+    <div class="p-4 sm:p-5 space-y-4 max-h-[88vh] overflow-y-auto">
+      <div class="flex items-start sm:items-center justify-between gap-2">
         <div>
           <h3 class="font-bold text-slate-900 text-base">Bảng quản trị Admin</h3>
           <p class="text-xs text-slate-500">Quản lý bài tập, link Google Sheets và bảo mật</p>
         </div>
-        <div class="flex items-center gap-2">
-          <button data-action="admin-logout" class="btn-fx px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Đăng xuất</button>
-          <button data-action="close-manage" class="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button data-action="admin-logout" class="btn-fx px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Đăng xuất</button>
+          <button data-action="close-manage" class="text-slate-400 hover:text-slate-600 text-lg font-bold px-1">✕</button>
         </div>
       </div>
 
       <!-- THANH CHUYỂN 2 PHẦN -->
-      <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+      <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl">
         <button id="tabBtnCreate" data-action="switch-admin-tab" data-tab="create" class="btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold">
           Tạo bài & Mật khẩu
         </button>
@@ -180,34 +181,34 @@
 
       <!-- PHẦN 1: TẠO BÀI TẬP & ĐỔI MẬT KHẨU -->
       <div id="adminPanelCreate" class="space-y-4">
-        <form id="createDeckForm" class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <form id="createDeckForm" class="space-y-3 bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200">
           <div class="text-xs font-bold uppercase tracking-wider text-indigo-700">Tạo & Xuất bài tập mới</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">Môn học (tự nhập)</label>
-              <input id="inpSubject" type="text" required placeholder="Nhập tên môn học..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <input id="inpSubject" type="text" required placeholder="Nhập tên môn học..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">Tên bài tập / Chuyên đề</label>
-              <input id="inpTitle" type="text" required placeholder="VD: Đề ôn tập chương 1" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <input id="inpTitle" type="text" required placeholder="VD: Đề ôn tập chương 1" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Link Google Sheet của bài tập này</label>
-            <input id="inpSheetUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input id="inpSheetUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
-          <button id="btnCreateDeck" type="submit" class="btn-fx w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold">
+          <button id="btnCreateDeck" type="submit" class="btn-fx w-full px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold">
             + Xuất bài lên Sảnh
           </button>
         </form>
 
-        <form id="changePassForm" class="space-y-3 bg-amber-50/70 p-4 rounded-xl border border-amber-200">
+        <form id="changePassForm" class="space-y-3 bg-amber-50/70 p-3.5 sm:p-4 rounded-xl border border-amber-200">
           <div class="text-xs font-bold uppercase tracking-wider text-amber-800">Đổi mật khẩu Admin</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <input id="inpOldPass" type="password" required placeholder="Mật khẩu hiện tại" class="px-3 py-2 rounded-lg border border-amber-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
-            <input id="inpNewPass" type="password" required minlength="4" placeholder="Mật khẩu mới (>= 4 ký tự)" class="px-3 py-2 rounded-lg border border-amber-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <input id="inpOldPass" type="password" required placeholder="Mật khẩu hiện tại" class="px-3 py-2 rounded-lg border border-amber-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <input id="inpNewPass" type="password" required minlength="4" placeholder="Mật khẩu mới (>= 4 ký tự)" class="px-3 py-2 rounded-lg border border-amber-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
           </div>
-          <button id="btnChangePass" type="submit" class="btn-fx px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold">
+          <button id="btnChangePass" type="submit" class="btn-fx w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold">
             Cập nhật mật khẩu
           </button>
         </form>
@@ -229,13 +230,13 @@
       <h3 class="font-bold text-slate-900 text-base">Xác nhận nộp bài</h3>
       <p id="confirmSubmitMsg" class="text-sm text-slate-600 leading-relaxed"></p>
       <div class="flex justify-end gap-2 pt-1">
-        <button data-action="cancel-submit" class="btn-fx px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Kiểm tra lại</button>
-        <button data-action="confirm-submit" class="btn-fx px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Chắc chắn nộp</button>
+        <button data-action="cancel-submit" class="btn-fx px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Kiểm tra lại</button>
+        <button data-action="confirm-submit" class="btn-fx px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Chắc chắn nộp</button>
       </div>
     </div>
   </dialog>
 
-  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm shadow-lg transition-all"></div>
+  <div id="toast" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:max-w-sm z-50 hidden px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm text-center sm:text-left shadow-lg transition-all"></div>
 
   <script>
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwUHAnGUXRFtCYybtmlliLGgIPImElup92oqOdvasclKNQ-oSgX0nNmAi2JE5skV6o2ig/exec';
@@ -415,7 +416,7 @@
       );
 
       if (!state.decks.length) {
-        $('deckGrid').innerHTML = `<div class="col-span-full card-box p-10 text-center text-slate-400 text-sm">Chưa có bài tập nào. Admin vui lòng đăng nhập để thêm bài tập.</div>`;
+        $('deckGrid').innerHTML = `<div class="col-span-full card-box p-8 sm:p-10 text-center text-slate-400 text-sm">Chưa có bài tập nào. Admin vui lòng đăng nhập để thêm bài tập.</div>`;
         return;
       }
 
@@ -423,17 +424,17 @@
         const types = getDeckTypes(d);
         const parts = getDeckParts(d);
         const qCount = d.questions?.length || 0;
-        return `<article class="card-box p-5 flex flex-col justify-between gap-4 hover:border-indigo-300 transition-colors">
-          <div class="space-y-2.5">
+        return `<article class="card-box p-4 sm:p-5 flex flex-col justify-between gap-3.5 hover:border-indigo-300 transition-colors min-w-0">
+          <div class="space-y-2 min-w-0">
             <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700">${esc(d.subject)}</span>
-            <h3 class="font-bold text-slate-900 text-base leading-snug">${esc(d.title)}</h3>
+            <h3 class="font-bold text-slate-900 text-base leading-snug break-words">${esc(d.title)}</h3>
             <div class="flex flex-wrap gap-1.5">
               ${types.length ? types.map(t => `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">${esc(TYPE_LABELS[t] || t)}</span>`).join('') : '<span class="text-xs text-indigo-600">Tự động tải Sheet khi mở</span>'}
             </div>
           </div>
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
             <span class="text-xs font-medium text-slate-500">${qCount ? `${parts.length} phần • ${qCount} câu` : 'Kết nối Sheet bài tập'}</span>
-            <button data-action="open-detail" data-id="${esc(d.id)}" class="btn-fx px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-xs sm:text-sm font-semibold">
+            <button data-action="open-detail" data-id="${esc(d.id)}" class="btn-fx shrink-0 px-3.5 py-2 sm:py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-xs sm:text-sm font-semibold">
               Chi tiết →
             </button>
           </div>
@@ -459,7 +460,7 @@
             <div class="font-bold text-sm ${checked ? 'text-indigo-900' : 'text-slate-800'}">${esc(TYPE_LABELS[type] || type)}</div>
             <div class="text-xs text-slate-500 mt-0.5">${count} câu có sẵn</div>
           </div>
-          <span class="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${checked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'}">✓</span>
+          <span class="w-5 h-5 shrink-0 rounded-md flex items-center justify-center text-xs font-bold ${checked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'}">✓</span>
         </button>`;
       }).join('') : `<div class="col-span-full text-xs text-slate-500">Chưa có câu hỏi (kiểm tra link Google Sheet bài tập).</div>`;
 
@@ -469,9 +470,9 @@
         const matchCount = qsInPart.filter(q => state.selectedTypes.includes(q.type)).length;
         const checked = state.selectedParts.includes(part);
         const typeBreakdown = getDeckTypes({ questions: qsInPart }).map(t => TYPE_LABELS[t] || t).join(', ');
-        return `<button data-action="toggle-part" data-part="${esc(part)}" class="btn-fx p-3.5 rounded-xl border text-left flex items-start justify-between gap-3 ${checked ? 'border-indigo-600 bg-indigo-50/80 ring-1 ring-indigo-600' : 'border-slate-200 bg-white hover:bg-slate-50'}">
-          <div>
-            <div class="font-semibold text-sm ${checked ? 'text-indigo-900' : 'text-slate-800'}">${esc(part)}</div>
+        return `<button data-action="toggle-part" data-part="${esc(part)}" class="btn-fx p-3.5 rounded-xl border text-left flex items-start justify-between gap-3 min-w-0 ${checked ? 'border-indigo-600 bg-indigo-50/80 ring-1 ring-indigo-600' : 'border-slate-200 bg-white hover:bg-slate-50'}">
+          <div class="min-w-0">
+            <div class="font-semibold text-sm break-words ${checked ? 'text-indigo-900' : 'text-slate-800'}">${esc(part)}</div>
             <div class="text-xs text-slate-500 mt-1">${qsInPart.length} câu (${esc(typeBreakdown)}) • Khớp gói: <strong>${matchCount}</strong></div>
           </div>
           <span class="w-5 h-5 mt-0.5 shrink-0 rounded-md flex items-center justify-center text-xs font-bold ${checked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'}">✓</span>
@@ -508,7 +509,7 @@
       const list = state.quizQuestions;
       if (!deck) return;
       $('quizTitle').textContent = deck.title;
-      $('quizMeta').textContent = `${deck.subject} • ${list.length} câu đã chọn`;
+      $('quizMeta').textContent = `${deck.subject} • ${list.length} câu`;
 
       const filterBar = $('resultFilterBar');
       if (state.submitted) {
@@ -521,7 +522,7 @@
         ];
         filterBar.innerHTML = tabs.map(t => {
           const active = state.resultFilter === t.key;
-          return `<button data-action="filter-result" data-filter="${t.key}" class="btn-fx px-3 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">${t.label}</button>`;
+          return `<button data-action="filter-result" data-filter="${t.key}" class="btn-fx px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">${t.label}</button>`;
         }).join('');
         filterBar.classList.remove('hidden');
       } else {
@@ -539,7 +540,7 @@
         let bodyHtml = '';
 
         if (q.type === 'MCQ') {
-          bodyHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
+          bodyHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 mt-3">
             ${Object.entries(q.options || {}).map(([k, val]) => {
               const selected = userAns === k;
               let cls = selected ? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-600' : 'border-slate-200 hover:bg-slate-50';
@@ -547,8 +548,8 @@
                 if (k === q.answer) cls = 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500';
                 else if (selected) cls = 'border-rose-500 bg-rose-50 text-rose-900';
               }
-              return `<button ${state.submitted ? 'disabled' : ''} data-action="pick-mcq" data-qid="${esc(q.id)}" data-val="${esc(k)}" class="btn-fx text-left px-3.5 py-2.5 rounded-xl border text-sm flex items-start gap-2.5 ${cls}">
-                <span class="font-bold">${esc(k)}.</span><span>${esc(val)}</span>
+              return `<button ${state.submitted ? 'disabled' : ''} data-action="pick-mcq" data-qid="${esc(q.id)}" data-val="${esc(k)}" class="btn-fx text-left px-3.5 py-3 sm:py-2.5 rounded-xl border text-sm flex items-start gap-2.5 min-w-0 ${cls}">
+                <span class="font-bold shrink-0">${esc(k)}.</span><span class="break-words min-w-0">${esc(val)}</span>
               </button>`;
             }).join('')}
           </div>`;
@@ -557,9 +558,9 @@
           bodyHtml = `<div class="space-y-2 mt-3">
             ${(q.items || []).map(it => {
               const picked = tfAns[it.key];
-              return `<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50/50">
-                <div class="text-sm"><span class="font-bold mr-1.5">${esc(it.key)})</span>${esc(it.text)}</div>
-                <div class="flex gap-1.5 shrink-0">
+              return `<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                <div class="text-sm break-words min-w-0"><span class="font-bold mr-1.5">${esc(it.key)})</span>${esc(it.text)}</div>
+                <div class="grid grid-cols-2 sm:flex gap-2 sm:gap-1.5 shrink-0">
                   ${['Đ', 'S'].map(opt => {
                     const isPicked = picked === opt;
                     let cls = isPicked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300';
@@ -567,7 +568,7 @@
                       if (opt === it.answer) cls = 'bg-emerald-600 text-white border-emerald-600';
                       else if (isPicked) cls = 'bg-rose-600 text-white border-rose-600';
                     }
-                    return `<button ${state.submitted ? 'disabled' : ''} data-action="pick-tf" data-qid="${esc(q.id)}" data-key="${esc(it.key)}" data-val="${opt}" class="btn-fx px-3 py-1 rounded-lg border text-xs font-bold ${cls}">${opt === 'Đ' ? 'Đúng' : 'Sai'}</button>`;
+                    return `<button ${state.submitted ? 'disabled' : ''} data-action="pick-tf" data-qid="${esc(q.id)}" data-key="${esc(it.key)}" data-val="${opt}" class="btn-fx px-3 py-2 sm:py-1 rounded-lg border text-xs font-bold ${cls}">${opt === 'Đ' ? 'Đúng' : 'Sai'}</button>`;
                   }).join('')}
                 </div>
               </div>`;
@@ -579,28 +580,28 @@
             ? (shortOk ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : 'border-rose-500 bg-rose-50 text-rose-900')
             : 'border-slate-300';
           bodyHtml = `<div class="mt-3">
-            <input ${state.submitted ? 'disabled' : ''} data-action="input-short" data-qid="${esc(q.id)}" type="text" value="${esc(userAns || '')}" placeholder="Nhập đáp án ngắn..." class="w-full sm:w-72 px-3.5 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputCls}">
+            <input ${state.submitted ? 'disabled' : ''} data-action="input-short" data-qid="${esc(q.id)}" type="text" value="${esc(userAns || '')}" placeholder="Nhập đáp án ngắn..." class="w-full sm:w-72 px-3.5 py-2.5 sm:py-2 rounded-xl border text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputCls}">
             ${state.submitted ? `<p class="text-xs font-semibold ${shortOk ? 'text-emerald-700' : 'text-rose-700'} mt-2">${shortOk ? 'Chính xác!' : `Đáp án chuẩn: ${esc(q.answer)}`}</p>` : ''}
           </div>`;
         }
 
         const imgHtml = q.img
-          ? `<div class="mt-3"><img src="${esc(q.img)}" alt="Hình minh họa câu ${qNum}" loading="lazy" class="max-h-80 rounded-xl border border-slate-200 object-contain bg-white"></div>`
+          ? `<div class="mt-3"><img src="${esc(q.img)}" alt="Hình minh họa câu ${qNum}" loading="lazy" class="w-full sm:w-auto max-h-80 rounded-xl border border-slate-200 object-contain bg-white"></div>`
           : '';
 
         const explainHtml = state.submitted && q.explain
-          ? `<div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed"><strong>Lời giải từ Sheet:</strong> ${esc(q.explain)}</div>`
+          ? `<div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed break-words"><strong>Lời giải từ Sheet:</strong> ${esc(q.explain)}</div>`
           : '';
 
-        return `<article id="qcard-${esc(q.id)}" class="card-box p-5">
+        return `<article id="qcard-${esc(q.id)}" class="card-box p-4 sm:p-5 min-w-0">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2">
-              <span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">Câu ${qNum}</span>
-              <span class="text-xs text-indigo-600 font-medium">${esc(cleanPartName(q.part))}</span>
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold shrink-0">Câu ${qNum}</span>
+              <span class="text-xs text-indigo-600 font-medium truncate">${esc(cleanPartName(q.part))}</span>
             </div>
-            <span class="text-xs text-slate-400 font-medium">${esc(TYPE_LABELS[q.type] || q.type)}</span>
+            <span class="text-xs text-slate-400 font-medium shrink-0">${esc(TYPE_LABELS[q.type] || q.type)}</span>
           </div>
-          <p class="text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line">${esc(q.text)}</p>
+          <p class="text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line break-words">${esc(q.text)}</p>
           ${imgHtml}
           ${bodyHtml}
           ${explainHtml}
@@ -627,19 +628,19 @@
       $('manageDeckList').innerHTML = state.decks.length ? state.decks.map((d, idx) => {
         const isEditing = state.editingDeckId === d.id;
         return `<div class="rounded-xl border ${isEditing ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200 bg-white'} p-3 space-y-3">
-          <div class="flex items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-bold text-slate-400">#${idx + 1}</span>
                 <span class="text-xs font-semibold text-indigo-600">${esc(d.subject)}</span>
               </div>
-              <div class="text-sm font-bold text-slate-800 truncate mt-0.5">${esc(d.title)}</div>
+              <div class="text-sm font-bold text-slate-800 break-words mt-0.5">${esc(d.title)}</div>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <button data-action="toggle-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-2.5 py-1 rounded-lg ${isEditing ? 'bg-indigo-600 text-white' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'} text-xs font-semibold">Chi tiết</button>
-              <button data-action="move-deck" data-idx="${idx}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} class="btn-fx px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↑</button>
-              <button data-action="move-deck" data-idx="${idx}" data-dir="1" ${idx === state.decks.length - 1 ? 'disabled' : ''} class="btn-fx px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↓</button>
-              <button data-action="del-deck" data-idx="${idx}" class="btn-fx px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Xóa</button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button data-action="toggle-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-2.5 py-1.5 rounded-lg ${isEditing ? 'bg-indigo-600 text-white' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'} text-xs font-semibold">Chi tiết</button>
+              <button data-action="move-deck" data-idx="${idx}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} class="btn-fx px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↑</button>
+              <button data-action="move-deck" data-idx="${idx}" data-dir="1" ${idx === state.decks.length - 1 ? 'disabled' : ''} class="btn-fx px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↓</button>
+              <button data-action="del-deck" data-idx="${idx}" class="btn-fx px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Xóa</button>
             </div>
           </div>
 
@@ -647,20 +648,20 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Môn học</label>
-                <input id="editSub-${esc(d.id)}" type="text" value="${esc(d.subject)}" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input id="editSub-${esc(d.id)}" type="text" value="${esc(d.subject)}" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Tên bài tập</label>
-                <input id="editTitle-${esc(d.id)}" type="text" value="${esc(d.title)}" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input id="editTitle-${esc(d.id)}" type="text" value="${esc(d.title)}" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
               </div>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Link Google Sheet bài tập</label>
-              <input id="editUrl-${esc(d.id)}" type="url" value="${esc(d.sheetUrl || '')}" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <input id="editUrl-${esc(d.id)}" type="url" value="${esc(d.sheetUrl || '')}" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div class="flex justify-end gap-2">
-              <button data-action="cancel-edit-deck" class="btn-fx px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold">Đóng</button>
-              <button data-action="save-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">Lưu thay đổi</button>
+              <button data-action="cancel-edit-deck" class="btn-fx px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold">Đóng</button>
+              <button data-action="save-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">Lưu thay đổi</button>
             </div>
           </div>` : ''}
         </div>`;
@@ -671,10 +672,10 @@
       const b = $('btnAdmin');
       if (state.isAdmin) {
         b.textContent = 'Admin ✓';
-        b.className = 'btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white';
+        b.className = 'btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white';
       } else {
         b.textContent = 'Admin';
-        b.className = 'btn-fx px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white';
+        b.className = 'btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white';
       }
     }
 
@@ -686,6 +687,7 @@
       if (view === 'lobby') renderLobby();
       else if (view === 'detail') renderDetail();
       else renderQuiz();
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
     document.addEventListener('click', async e => {
@@ -812,6 +814,7 @@
       } else if (act === 'filter-result') {
         state.resultFilter = btn.dataset.filter;
         renderQuiz();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (act === 'ask-submit') {
         const total = state.quizQuestions.length;
         const done = state.quizQuestions.filter(isQuestionAnswered).length;
