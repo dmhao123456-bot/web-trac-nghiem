@@ -236,6 +236,14 @@
     </div>
   </dialog>
 
+  <!-- MỤC ĐANG TẢI VỀ (HIỂN THỊ TRÊN CẢ MÁY TÍNH & ĐIỆN THOẠI) -->
+  <div id="loadingOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/25 backdrop-blur-[1px] flex items-center justify-center px-4">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl px-6 py-4 flex items-center gap-3.5 max-w-xs w-full justify-center">
+      <span class="w-6 h-6 rounded-full border-[3px] border-indigo-600 border-t-transparent animate-spin shrink-0"></span>
+      <span id="loadingText" class="text-sm font-semibold text-slate-800">Đang tải về...</span>
+    </div>
+  </div>
+
   <div id="toast" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:max-w-sm z-50 hidden px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm text-center sm:text-left shadow-lg transition-all"></div>
 
   <script>
@@ -274,6 +282,11 @@
       t._timer = setTimeout(() => t.classList.add('hidden'), 2600);
     }
 
+    function setGlobalLoading(show, text = 'Đang tải về...') {
+      $('loadingText').textContent = text;
+      $('loadingOverlay').classList.toggle('hidden', !show);
+    }
+
     function setBadge(status, text) {
       const styles = {
         empty: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -310,7 +323,9 @@
       }
       state.loading = true;
       $('btnRefresh').disabled = true;
-      setBadge('loading', 'Đang tải Sheet Admin...');
+      setBadge('loading', 'Đang tải về...');
+      setGlobalLoading(true, 'Đang tải dữ liệu về...');
+      renderLobby();
       try {
         const res = await fetch(`${GAS_API_URL}?action=getDecks`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -329,6 +344,7 @@
       } finally {
         state.loading = false;
         $('btnRefresh').disabled = false;
+        setGlobalLoading(false);
         if (state.view === 'lobby') renderLobby();
       }
     }
@@ -354,13 +370,15 @@
 
     async function loadDeckQuestions(deck) {
       if (!GAS_API_URL || !deck.sheetUrl) return deck;
+      setGlobalLoading(true, 'Đang tải bài tập về...');
       try {
-        showToast(`Đang tải câu hỏi từ Sheet "${deck.title}"...`);
         const data = await callGas({ action: 'getQuestions', sheetUrl: deck.sheetUrl });
         if (Array.isArray(data?.questions)) deck.questions = data.questions;
         else if (data?.error) showToast(data.error);
       } catch (err) {
         showToast('Lỗi tải câu hỏi từ Sheet bài tập');
+      } finally {
+        setGlobalLoading(false);
       }
       return deck;
     }
@@ -410,6 +428,14 @@
     }
 
     function renderLobby() {
+      if (state.loading && !state.decks.length) {
+        $('deckGrid').innerHTML = `<div class="col-span-full card-box p-8 sm:p-10 flex flex-col items-center justify-center gap-3 text-slate-600 text-sm">
+          <span class="w-7 h-7 rounded-full border-[3px] border-indigo-600 border-t-transparent animate-spin"></span>
+          <span class="font-semibold">Đang tải dữ liệu về...</span>
+        </div>`;
+        return;
+      }
+
       const q = normStr(state.search);
       const filtered = state.decks.filter(d =>
         !q || normStr(d.subject).includes(q) || normStr(d.title).includes(q)
