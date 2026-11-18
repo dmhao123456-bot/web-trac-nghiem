@@ -97,7 +97,17 @@
             <h2 id="detailTitle" class="font-bold text-slate-900 text-base sm:text-xl mt-1 break-words">Tên chuyên đề</h2>
           </div>
         </div>
-        <div id="detailTotalBadge" class="text-xs font-semibold px-3 py-1 rounded-xl bg-slate-100 text-slate-600 shrink-0"></div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button data-action="refresh-deck-questions" title="Tải lại câu hỏi mới nhất từ Sheet" class="btn-fx px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold">🔄 Tải lại đề</button>
+          <div id="detailTotalBadge" class="text-xs font-semibold px-3 py-1 rounded-xl bg-slate-100 text-slate-600"></div>
+        </div>
+      </div>
+      <div id="detailDraftBanner" class="hidden card-box p-3.5 sm:p-4 bg-amber-50/70 border-amber-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div id="detailDraftText" class="text-xs sm:text-sm font-medium text-amber-900"></div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button data-action="discard-draft" class="btn-fx px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-800 text-xs font-semibold hover:bg-amber-100">Xóa nháp</button>
+          <button data-action="resume-draft" class="btn-fx px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold">Tiếp tục làm dở →</button>
+        </div>
       </div>
 
       <!-- BƯỚC 1: CHỌN GÓI DẠNG BÀI -->
@@ -251,7 +261,11 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Link Google Sheet của bài tập này</label>
-            <input id="inpSheetUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input id="inpSheetUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/d/..." class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <button id="btnCheckSheet" type="button" data-action="check-sheet-url" class="btn-fx shrink-0 px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold">Kiểm tra Sheet</button>
+            </div>
+            <div id="checkSheetResult" class="hidden mt-2 text-xs rounded-lg px-3 py-2 border"></div>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Ghi chú (Note hiển thị dưới bài tập - tùy chọn)</label>
@@ -279,6 +293,7 @@
         <div class="flex items-center justify-between">
           <span class="text-xs text-slate-500">Bấm <strong>Chi tiết</strong> để xem/sửa tên, môn, nhóm thẻ, link Sheet; bấm <strong>↑ ↓</strong> để đổi vị trí.</span>
         </div>
+        <div id="adminManageFilterBar" class="flex flex-wrap items-center gap-1.5 pb-1"></div>
         <div id="manageDeckList" class="space-y-2.5"></div>
       </div>
     </div>
@@ -340,8 +355,11 @@
       shuffleEnabled: false,
       quizQuestions: [],
       answers: {},
+      flags: {},
+      quizFilter: 'all',
       submitted: false,
       resultFilter: 'all',
+      adminGroupFilter: 'Tất cả',
       pendingLeaveView: null,
       loading: false,
       isAdmin: false,
@@ -483,6 +501,7 @@
           sheetUrl: d.sheetUrl,
           group: d.group || '',
           note: d.note || '',
+          hidden: Boolean(d.hidden),
           order: i + 1
         }));
         const data = await callGas({ action: 'saveDecks', password: state.adminPassword, decks: cleanDecks });
@@ -506,13 +525,61 @@
       }
     }
 
-    async function loadDeckQuestions(deck) {
+    function getCacheKey(url) {
+      return 'qcache_' + encodeURIComponent(String(url || '').trim());
+    }
+    function readQuestionCache(url) {
+      try {
+        const raw = sessionStorage.getItem(getCacheKey(url));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : null;
+      } catch { return null; }
+    }
+    function writeQuestionCache(url, qs) {
+      try { sessionStorage.setItem(getCacheKey(url), JSON.stringify(qs)); } catch {}
+    }
+
+    function getDraftKey(deckId) { return 'quiz_draft_' + deckId; }
+    function loadDraft(deckId) {
+      try {
+        const raw = localStorage.getItem(getDraftKey(deckId));
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    }
+    function saveDraft() {
+      if (!state.activeDeck || state.submitted || !state.quizQuestions.length) return;
+      try {
+        localStorage.setItem(getDraftKey(state.activeDeck.id), JSON.stringify({
+          quizQuestions: state.quizQuestions,
+          answers: state.answers,
+          flags: state.flags,
+          shuffleEnabled: state.shuffleEnabled,
+          savedAt: Date.now()
+        }));
+      } catch {}
+    }
+    function clearDraft(deckId) {
+      try { localStorage.removeItem(getDraftKey(deckId)); } catch {}
+    }
+
+    async function loadDeckQuestions(deck, forceRefresh = false) {
       if (!GAS_API_URL || !deck.sheetUrl) return deck;
+      if (!forceRefresh) {
+        if (Array.isArray(deck.questions) && deck.questions.length) return deck;
+        const cached = readQuestionCache(deck.sheetUrl);
+        if (cached && cached.length) {
+          deck.questions = cached;
+          return deck;
+        }
+      }
       setGlobalLoading(true, 'Đang tải bài tập về...');
       try {
         const data = await callGas({ action: 'getQuestions', sheetUrl: deck.sheetUrl });
-        if (Array.isArray(data?.questions)) deck.questions = data.questions;
-        else if (data?.error) showToast(data.error);
+        if (Array.isArray(data?.questions)) {
+          deck.questions = data.questions;
+          writeQuestionCache(deck.sheetUrl, data.questions);
+        } else if (data?.error) showToast(data.error);
       } catch (err) {
         showToast('Lỗi tải câu hỏi từ Sheet bài tập');
       } finally {
@@ -590,7 +657,8 @@
       }
 
       const q = normStr(state.search);
-      const filtered = state.decks.filter(d => {
+      const visibleDecks = state.decks.filter(d => !d.hidden);
+      const filtered = visibleDecks.filter(d => {
         const matchGroup = state.activeGroup === 'Tất cả' || (d.group || '') === state.activeGroup;
         const matchSearch = !q || normStr(d.subject).includes(q) || normStr(d.title).includes(q);
         return matchGroup && matchSearch;
@@ -635,6 +703,18 @@
       $('detailSubject').textContent = deck.subject;
       $('detailTitle').textContent = deck.title;
       $('detailTotalBadge').textContent = `${qs.length} câu hỏi`;
+      const draft = loadDraft(deck.id);
+      const draftBanner = $('detailDraftBanner');
+      if (draft && Array.isArray(draft.quizQuestions) && draft.quizQuestions.length) {
+        const answered = draft.quizQuestions.filter(q => {
+          const a = (draft.answers || {})[q.id];
+          return q.type === 'TF' ? Boolean(a && Object.keys(a).length) : Boolean(a && String(a).trim());
+        }).length;
+        $('detailDraftText').textContent = `Bạn có bài làm dở (${answered}/${draft.quizQuestions.length} câu). Bạn muốn làm tiếp không?`;
+        draftBanner.classList.remove('hidden');
+      } else {
+        draftBanner.classList.add('hidden');
+      }
 
       const availableTypes = getDeckTypes(deck);
       $('detailTypeList').innerHTML = availableTypes.length ? availableTypes.map(type => {
@@ -712,10 +792,21 @@
         filterBar.innerHTML = tabs.map(t => {
           const active = state.resultFilter === t.key;
           return `<button data-action="filter-result" data-filter="${t.key}" class="btn-fx px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">${t.label}</button>`;
-        }).join('');
+        }).join('') + (wrongCount > 0 ? `<button data-action="retry-wrong" class="btn-fx px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm">↺ Làm lại ${wrongCount} câu sai</button>` : '');
         filterBar.classList.remove('hidden');
       } else {
-        filterBar.classList.add('hidden');
+        const unansweredCount = list.filter(q => !isQuestionAnswered(q)).length;
+        const flaggedCount = list.filter(q => Boolean(state.flags[q.id])).length;
+        const qTabs = [
+          { key: 'all', label: `Tất cả (${list.length})` },
+          { key: 'unanswered', label: `Chưa làm (${unansweredCount})` },
+          { key: 'flagged', label: `Xem lại (${flaggedCount})` }
+        ];
+        filterBar.innerHTML = qTabs.map(t => {
+          const active = state.quizFilter === t.key;
+          return `<button data-action="filter-quiz" data-filter="${t.key}" class="btn-fx px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">${t.label}</button>`;
+        }).join('');
+        filterBar.classList.remove('hidden');
       }
 
       const cardsHtml = list.map((q, idx) => {
@@ -723,6 +814,9 @@
           const ok = isQuestionCorrect(q);
           if (state.resultFilter === 'correct' && !ok) return '';
           if (state.resultFilter === 'wrong' && ok) return '';
+        } else {
+          if (state.quizFilter === 'unanswered' && isQuestionAnswered(q)) return '';
+          if (state.quizFilter === 'flagged' && !state.flags[q.id]) return '';
         }
         const qNum = idx + 1;
         const userAns = state.answers[q.id];
@@ -788,7 +882,10 @@
               <span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold shrink-0">Câu ${qNum}</span>
               <span class="text-xs text-indigo-600 font-medium truncate">${esc(cleanPartName(q.part))}</span>
             </div>
-            <span class="text-xs text-slate-400 font-medium shrink-0">${esc(TYPE_LABELS[q.type] || q.type)}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              ${!state.submitted ? `<button data-action="toggle-flag" data-qid="${esc(q.id)}" class="btn-fx px-2 py-0.5 rounded-md text-[11px] font-semibold border ${state.flags[q.id] ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}">${state.flags[q.id] ? '🚩 Đã đánh dấu' : '⚑ Xem lại'}</button>` : ''}
+              <span class="text-xs text-slate-400 font-medium">${esc(TYPE_LABELS[q.type] || q.type)}</span>
+            </div>
           </div>
           <p class="text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line break-words">${esc(q.text)}</p>
           ${imgHtml}
@@ -826,19 +923,35 @@
     }
 
     function renderManageList() {
-      $('manageDeckList').innerHTML = state.decks.length ? state.decks.map((d, idx) => {
+      const hasUngrouped = state.decks.some(d => !d.group);
+      const filterOpts = ['Tất cả', ...state.groups, ...(hasUngrouped ? ['Chưa phân nhóm'] : [])];
+      if (!filterOpts.includes(state.adminGroupFilter)) state.adminGroupFilter = 'Tất cả';
+      $('adminManageFilterBar').innerHTML = filterOpts.map(g => {
+        const active = state.adminGroupFilter === g;
+        return `<button data-action="admin-filter-group" data-group="${esc(g)}" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}">${esc(g)}</button>`;
+      }).join('');
+
+      const items = state.decks.map((d, idx) => ({ d, idx })).filter(({ d }) => {
+        if (state.adminGroupFilter === 'Tất cả') return true;
+        if (state.adminGroupFilter === 'Chưa phân nhóm') return !d.group;
+        return d.group === state.adminGroupFilter;
+      });
+
+      $('manageDeckList').innerHTML = items.length ? items.map(({ d, idx }) => {
         const isEditing = state.editingDeckId === d.id;
-        return `<div class="rounded-xl border ${isEditing ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200 bg-white'} p-3 space-y-3">
+        return `<div class="rounded-xl border ${isEditing ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200 bg-white'} p-3 space-y-3 ${d.hidden ? 'opacity-75' : ''}">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-xs font-bold text-slate-400">#${idx + 1}</span>
                 <span class="text-xs font-semibold text-indigo-600">${esc(d.subject)}</span>
                 ${d.group ? `<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-medium">${esc(d.group)}</span>` : ''}
+                ${d.hidden ? `<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[11px] font-semibold">Đang ẩn</span>` : ''}
               </div>
               <div class="text-sm font-bold text-slate-800 break-words mt-0.5">${esc(d.title)}</div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+              <button data-action="toggle-hide-deck" data-id="${esc(d.id)}" class="btn-fx px-2.5 py-1.5 rounded-lg ${d.hidden ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700' : 'bg-amber-50 hover:bg-amber-100 text-amber-700'} text-xs font-semibold">${d.hidden ? 'Hiện' : 'Ẩn'}</button>
               <button data-action="toggle-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-2.5 py-1.5 rounded-lg ${isEditing ? 'bg-indigo-600 text-white' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'} text-xs font-semibold">Chi tiết</button>
               <button data-action="move-deck" data-idx="${idx}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} class="btn-fx px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↑</button>
               <button data-action="move-deck" data-idx="${idx}" data-dir="1" ${idx === state.decks.length - 1 ? 'disabled' : ''} class="btn-fx px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-bold">↓</button>
@@ -1056,18 +1169,111 @@
         if (!matched.length) return;
         state.quizQuestions = prepareQuizQuestions(matched, state.shuffleEnabled);
         state.answers = {};
+        state.flags = {};
+        state.quizFilter = 'all';
         state.submitted = false;
         state.resultFilter = 'all';
+        saveDraft();
         $('quizScoreBadge').classList.add('hidden');
         $('btnSubmitQuiz').classList.remove('hidden');
         switchView('quiz');
       } else if (act === 'pick-mcq') {
         state.answers[btn.dataset.qid] = btn.dataset.val;
+        saveDraft();
         renderQuiz();
       } else if (act === 'pick-tf') {
         const qid = btn.dataset.qid;
         state.answers[qid] = { ...(state.answers[qid] || {}), [btn.dataset.key]: btn.dataset.val };
+        saveDraft();
         renderQuiz();
+      } else if (act === 'refresh-deck-questions') {
+        if (!state.activeDeck) return;
+        await loadDeckQuestions(state.activeDeck, true);
+        renderDetail();
+        showToast('Đã tải lại dữ liệu câu hỏi mới nhất');
+      } else if (act === 'resume-draft') {
+        if (!state.activeDeck) return;
+        const draft = loadDraft(state.activeDeck.id);
+        if (!draft || !Array.isArray(draft.quizQuestions)) return;
+        state.quizQuestions = draft.quizQuestions;
+        state.answers = draft.answers || {};
+        state.flags = draft.flags || {};
+        state.shuffleEnabled = Boolean(draft.shuffleEnabled);
+        state.quizFilter = 'all';
+        state.submitted = false;
+        state.resultFilter = 'all';
+        $('quizScoreBadge').classList.add('hidden');
+        $('btnSubmitQuiz').classList.remove('hidden');
+        switchView('quiz');
+      } else if (act === 'discard-draft') {
+        if (!state.activeDeck) return;
+        clearDraft(state.activeDeck.id);
+        renderDetail();
+        showToast('Đã xóa bản nháp');
+      } else if (act === 'toggle-flag') {
+        const qid = btn.dataset.qid;
+        if (state.flags[qid]) delete state.flags[qid];
+        else state.flags[qid] = true;
+        saveDraft();
+        renderQuiz();
+      } else if (act === 'filter-quiz') {
+        state.quizFilter = btn.dataset.filter;
+        renderQuiz();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (act === 'retry-wrong') {
+        const wrongQs = state.quizQuestions.filter(q => !isQuestionCorrect(q));
+        if (!wrongQs.length) return;
+        state.quizQuestions = wrongQs.map(q => state.shuffleEnabled ? cloneShuffledQuestion(q) : q);
+        state.answers = {};
+        state.flags = {};
+        state.quizFilter = 'all';
+        state.submitted = false;
+        state.resultFilter = 'all';
+        $('quizScoreBadge').classList.add('hidden');
+        $('btnSubmitQuiz').classList.remove('hidden');
+        saveDraft();
+        renderQuiz();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast(`Bắt đầu làm lại ${wrongQs.length} câu sai`);
+      } else if (act === 'admin-filter-group') {
+        state.adminGroupFilter = btn.dataset.group;
+        renderManageList();
+      } else if (act === 'toggle-hide-deck') {
+        const deck = state.decks.find(d => d.id === btn.dataset.id);
+        if (!deck) return;
+        deck.hidden = !deck.hidden;
+        await syncDecksToAdminSheet();
+        renderManageList();
+        renderLobby();
+        showToast(deck.hidden ? `Đã ẩn "${deck.title}" khỏi Sảnh` : `Đã hiện "${deck.title}" lên Sảnh`);
+      } else if (act === 'check-sheet-url') {
+        const url = $('inpSheetUrl').value.trim();
+        const resBox = $('checkSheetResult');
+        if (!url) { showToast('Vui lòng nhập link Google Sheet trước'); return; }
+        btn.disabled = true;
+        btn.textContent = 'Đang kiểm tra...';
+        resBox.className = 'mt-2 text-xs rounded-lg px-3 py-2 border bg-slate-50 border-slate-200 text-slate-600';
+        resBox.textContent = 'Đang kết nối Google Sheet...';
+        resBox.classList.remove('hidden');
+        try {
+          const data = await callGas({ action: 'getQuestions', sheetUrl: url });
+          if (Array.isArray(data?.questions)) {
+            const qs = data.questions;
+            const mcq = qs.filter(q => q.type === 'MCQ').length;
+            const tf = qs.filter(q => q.type === 'TF').length;
+            const sh = qs.filter(q => q.type === 'SHORT').length;
+            resBox.className = 'mt-2 text-xs rounded-lg px-3 py-2 border bg-emerald-50 border-emerald-200 text-emerald-800';
+            resBox.textContent = `✓ Hợp lệ: Tổng ${qs.length} câu (Trắc nghiệm: ${mcq}, Đúng/Sai: ${tf}, Trả lời ngắn: ${sh}).`;
+          } else {
+            throw new Error(data?.error || 'Không đọc được câu hỏi từ Sheet này');
+          }
+        } catch (err) {
+          resBox.className = 'mt-2 text-xs rounded-lg px-3 py-2 border bg-rose-50 border-rose-200 text-rose-700';
+          resBox.textContent = `✕ Lỗi: ${err.message || 'Không thể truy cập Sheet'}`;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Kiểm tra Sheet';
+        }
       } else if (act === 'filter-result') {
         state.resultFilter = btn.dataset.filter;
         renderQuiz();
@@ -1086,6 +1292,7 @@
         $('confirmSubmitModal').close();
         state.submitted = true;
         state.resultFilter = 'all';
+        if (state.activeDeck) clearDraft(state.activeDeck.id);
         const total = state.quizQuestions.length;
         const right = state.quizQuestions.filter(isQuestionCorrect).length;
         const pct = total ? Math.round((right / total) * 100) : 0;
@@ -1182,6 +1389,7 @@
       await syncDecksToAdminSheet();
       btn.disabled = false;
       e.target.reset();
+      $('checkSheetResult')?.classList.add('hidden');
       renderAdminModal();
       renderLobby();
       showToast(`Đã xuất "${title}" (${subject})`);
@@ -1193,6 +1401,7 @@
         renderLobby();
       } else if (e.target.dataset.action === 'input-short') {
         state.answers[e.target.dataset.qid] = e.target.value;
+        saveDraft();
       }
     });
 
