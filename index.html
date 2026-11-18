@@ -453,13 +453,12 @@
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         if (Array.isArray(data?.decks)) {
-          state.decks = data.decks;
+          state.decks = [...data.decks].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
           const deckGroups = state.decks.map(d => d.group).filter(Boolean);
           const apiGroups = Array.isArray(data.groups) ? data.groups : [];
           state.groups = [...new Set([...apiGroups, ...deckGroups])];
           if (data.adminPassword) state.adminPassword = String(data.adminPassword);
           setBadge('live', 'Đã đồng bộ tự động');
-          showToast(`Đã tải ${state.decks.length} bài tập từ Sheet Admin`);
         } else {
           throw new Error('Dữ liệu không hợp lệ');
         }
