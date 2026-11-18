@@ -26,7 +26,9 @@
     html.dark .text-slate-900, html.dark .text-slate-800 { color: #f1f5f9 !important; }
     html.dark .text-slate-700, html.dark .text-slate-600 { color: #cbd5e1 !important; }
     html.dark .text-slate-500, html.dark .text-slate-400 { color: #94a3b8 !important; }
-    html.dark input, html.dark select { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+    html.dark input, html.dark select, html.dark textarea { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+    html.dark .bg-amber-50\/70 { background-color: rgba(245, 158, 11, 0.14) !important; }
+    html.dark .border-amber-200\/70 { border-color: rgba(245, 158, 11, 0.35) !important; }
     html.dark .bg-indigo-50, html.dark .bg-indigo-50\/70, html.dark .bg-indigo-50\/80, html.dark .bg-indigo-50\/40 { background-color: rgba(79, 70, 229, 0.22) !important; }
     html.dark .text-indigo-900, html.dark .text-indigo-700, html.dark .text-indigo-600 { color: #a5b4fc !important; }
     html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.18) !important; }
@@ -250,6 +252,10 @@
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Link Google Sheet của bài tập này</label>
             <input id="inpSheetUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Ghi chú (Note hiển thị dưới bài tập - tùy chọn)</label>
+            <textarea id="inpNote" rows="2" placeholder="VD: Ôn kỹ phần Trắc nghiệm, hạn nộp thứ 6..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
           </div>
           <button id="btnCreateDeck" type="submit" class="btn-fx w-full px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold">
             + Xuất bài lên Sảnh
@@ -477,6 +483,7 @@
           title: d.title,
           sheetUrl: d.sheetUrl,
           group: d.group || '',
+          note: d.note || '',
           order: i + 1
         }));
         const data = await callGas({ action: 'saveDecks', password: state.adminPassword, decks: cleanDecks });
@@ -616,6 +623,7 @@
               Chi tiết →
             </button>
           </div>
+          ${d.note ? `<div class="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/70 text-xs text-amber-900 whitespace-pre-line break-words">📝 ${esc(d.note)}</div>` : ''}
         </article>`;
       }).join('') : `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Không tìm thấy bài tập phù hợp trong mục này.</div>`;
     }
@@ -860,6 +868,10 @@
               <label class="block text-xs font-semibold text-slate-600 mb-1">Link Google Sheet bài tập</label>
               <input id="editUrl-${esc(d.id)}" type="url" value="${esc(d.sheetUrl || '')}" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Ghi chú (Note dưới bài tập)</label>
+              <textarea id="editNote-${esc(d.id)}" rows="2" placeholder="Nhập ghi chú cho bài tập này..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">${esc(d.note || '')}</textarea>
+            </div>
             <div class="flex justify-end gap-2">
               <button data-action="cancel-edit-deck" class="btn-fx px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold">Đóng</button>
               <button data-action="save-edit-deck" data-id="${esc(d.id)}" class="btn-fx px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">Lưu thay đổi</button>
@@ -974,6 +986,7 @@
         const title = $(`editTitle-${id}`)?.value.trim();
         const grp = $(`editGroup-${id}`)?.value || '';
         const url = $(`editUrl-${id}`)?.value.trim();
+        const note = $(`editNote-${id}`)?.value.trim() || '';
         if (!sub || !title || !url) {
           showToast('Vui lòng nhập đủ Môn, Tên bài và Link Sheet');
           return;
@@ -982,6 +995,7 @@
         deck.title = title;
         deck.group = grp;
         deck.sheetUrl = url;
+        deck.note = note;
         state.editingDeckId = null;
         await syncDecksToAdminSheet();
         renderAdminModal();
@@ -1153,6 +1167,7 @@
       const title = $('inpTitle').value.trim();
       const group = $('inpGroup').value || '';
       const sheetUrl = $('inpSheetUrl').value.trim();
+      const note = $('inpNote').value.trim();
       if (!subject || !title || !sheetUrl) return;
       const btn = $('btnCreateDeck');
       btn.disabled = true;
@@ -1162,6 +1177,7 @@
         title,
         group,
         sheetUrl,
+        note,
         questions: []
       });
       await syncDecksToAdminSheet();
