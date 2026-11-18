@@ -19,6 +19,8 @@
     html.dark .bg-white { background-color: #0f172a !important; }
     html.dark .bg-white\/95 { background-color: rgba(15, 23, 42, 0.95) !important; }
     html.dark .bg-slate-50, html.dark .bg-slate-50\/50, html.dark .bg-slate-100 { background-color: #1e293b !important; }
+    html.dark .bg-slate-200 { background-color: #334155 !important; }
+    html.dark .hover\:bg-slate-300:hover { background-color: #475569 !important; }
     html.dark .hover\:bg-slate-50:hover, html.dark .hover\:bg-slate-100:hover, html.dark .hover\:bg-slate-200:hover { background-color: #334155 !important; }
     html.dark .border-slate-100, html.dark .border-slate-200, html.dark .border-slate-300 { border-color: #334155 !important; }
     html.dark .text-slate-900, html.dark .text-slate-800 { color: #f1f5f9 !important; }
@@ -58,8 +60,8 @@
         <button id="btnAdmin" data-action="open-admin" class="btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-indigo-600 text-white">
           Admin
         </button>
-        <button id="btnRefresh" data-action="refresh-data" class="btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">
-          Làm mới
+        <button id="btnRefresh" data-action="refresh-data" class="btn-fx px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700" title="Làm mới dữ liệu">
+          ↻ <span class="hidden min-[380px]:inline">Làm mới</span>
         </button>
       </div>
     </div>
@@ -78,7 +80,7 @@
         <div id="groupFilterBar" class="flex flex-wrap gap-2"></div>
       </div>
 
-      <div id="deckGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"></div>
+      <div id="deckGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"></div>
     </section>
 
     <!-- MÀN HÌNH 2: CHI TIẾT & TÙY CHỌN GÓI ÔN TẬP -->
@@ -103,7 +105,7 @@
             <h3 class="font-bold text-slate-900 text-sm sm:text-base">1. Chọn gói dạng bài muốn ôn</h3>
             <p class="text-xs text-slate-500">Tự chọn một dạng hoặc kết hợp nhiều dạng cùng lúc.</p>
           </div>
-          <div class="flex flex-wrap gap-1.5">
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5">
             <button data-action="preset-types" data-preset="MCQ" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Trắc nghiệm</button>
             <button data-action="preset-types" data-preset="TF" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Chỉ Đúng / Sai</button>
             <button data-action="preset-types" data-preset="MCQ+TF" class="btn-fx px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Kết hợp TN + Đ/S</button>
@@ -152,8 +154,8 @@
     <!-- MÀN HÌNH 3: KHÔNG GIAN LÀM BÀI -->
     <section id="viewQuiz" class="hidden space-y-4 sm:space-y-5 max-w-4xl mx-auto">
       <div class="card-box p-2.5 sm:p-4 sticky top-14 sm:top-16 z-20 bg-white/95 backdrop-blur-sm shadow-md space-y-2.5">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2 min-w-0">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
             <button data-action="go-detail" class="btn-fx shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-700">
               ← Đổi gói
             </button>
@@ -194,7 +196,7 @@
 
   <!-- MODAL QUẢN TRỊ ADMIN (2 PHẦN CHUYỂN QUA LẠI) -->
   <dialog id="manageModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-2xl w-[94%] shadow-xl border border-slate-200">
-    <div class="p-4 sm:p-5 space-y-4 max-h-[88vh] overflow-y-auto">
+    <div class="p-4 sm:p-5 space-y-4 max-h-[90dvh] overflow-y-auto overscroll-contain">
       <div class="flex items-start sm:items-center justify-between gap-2">
         <div>
           <h3 class="font-bold text-slate-900 text-base">Bảng quản trị Admin</h3>
@@ -281,7 +283,7 @@
     <div class="p-5 space-y-4">
       <h3 class="font-bold text-slate-900 text-base">Xác nhận nộp bài</h3>
       <p id="confirmSubmitMsg" class="text-sm text-slate-600 leading-relaxed"></p>
-      <div class="flex justify-end gap-2 pt-1">
+      <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2 pt-1">
         <button data-action="cancel-submit" class="btn-fx px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Kiểm tra lại</button>
         <button data-action="confirm-submit" class="btn-fx px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Chắc chắn nộp</button>
       </div>
@@ -293,7 +295,7 @@
     <div class="p-5 space-y-4">
       <h3 class="font-bold text-slate-900 text-base">Rời khỏi gói ôn tập?</h3>
       <p class="text-sm text-slate-600 leading-relaxed">Bạn có chắc chắn muốn rời khỏi gói bài tập hiện tại không? Các câu đã chọn sẽ không được lưu.</p>
-      <div class="flex justify-end gap-2 pt-1">
+      <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2 pt-1">
         <button data-action="cancel-leave" class="btn-fx px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Ở lại làm tiếp</button>
         <button data-action="confirm-leave" class="btn-fx px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Chắc chắn rời</button>
       </div>
@@ -766,7 +768,7 @@
         }
 
         const imgHtml = q.img
-          ? `<div class="mt-3"><img src="${esc(q.img)}" alt="Hình minh họa câu ${qNum}" loading="lazy" class="w-full sm:w-auto max-h-80 rounded-xl border border-slate-200 object-contain bg-white"></div>`
+          ? `<div class="mt-3"><img src="${esc(q.img)}" alt="Hình minh họa câu ${qNum}" loading="lazy" class="w-full sm:w-auto max-w-full max-h-72 sm:max-h-96 rounded-xl border border-slate-200 object-contain bg-white"></div>`
           : '';
 
         const explainHtml = state.submitted && q.explain
