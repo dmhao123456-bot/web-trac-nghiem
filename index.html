@@ -24,7 +24,7 @@
     html.dark .text-slate-900, html.dark .text-slate-800 { color: #f1f5f9 !important; }
     html.dark .text-slate-700, html.dark .text-slate-600 { color: #cbd5e1 !important; }
     html.dark .text-slate-500, html.dark .text-slate-400 { color: #94a3b8 !important; }
-    html.dark input { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+    html.dark input, html.dark select { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
     html.dark .bg-indigo-50, html.dark .bg-indigo-50\/70, html.dark .bg-indigo-50\/80, html.dark .bg-indigo-50\/40 { background-color: rgba(79, 70, 229, 0.22) !important; }
     html.dark .text-indigo-900, html.dark .text-indigo-700, html.dark .text-indigo-600 { color: #a5b4fc !important; }
     html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.18) !important; }
@@ -67,14 +67,15 @@
 
   <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- MÀN HÌNH 1: SẢNH CHỌN MỤC -->
-    <section id="viewLobby" class="space-y-4 sm:space-y-6">
+    <section id="viewLobby" class="space-y-4 sm:space-y-5">
       <div class="card-box p-4 sm:p-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0">
         <h2 class="text-lg sm:text-2xl font-bold">Chào mừng bạn đến với kho bài tập</h2>
         <p class="text-indigo-100 text-xs sm:text-sm mt-1">Gõ tên môn học hoặc tên bài để tìm nhanh, sau đó bấm Chi tiết để tự chọn gói ôn tập.</p>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="space-y-3">
         <input id="searchInput" type="search" placeholder="Gõ tên môn học hoặc tên bài tập..." class="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 bg-white text-base sm:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <div id="groupFilterBar" class="flex flex-wrap gap-2"></div>
       </div>
 
       <div id="deckGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"></div>
@@ -182,7 +183,7 @@
         <h3 class="font-bold text-slate-900 text-base">Đăng nhập Admin</h3>
         <button type="button" data-action="close-login" class="text-slate-400 hover:text-slate-600 text-lg font-bold px-1">✕</button>
       </div>
-      <p class="text-xs text-slate-500">Chỉ Admin mới có quyền tạo bài, gắn link Google Sheet bài tập, sắp xếp và quản lý hệ thống.</p>
+      <p class="text-xs text-slate-500">Chỉ Admin mới có quyền tạo nhóm thẻ, tạo bài, gắn link Google Sheet bài tập và quản lý hệ thống.</p>
       <input id="inpAdminPass" type="password" required placeholder="Nhập mật khẩu Admin..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       <div class="flex justify-end gap-2">
         <button type="button" data-action="close-login" class="btn-fx px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium">Hủy</button>
@@ -197,7 +198,7 @@
       <div class="flex items-start sm:items-center justify-between gap-2">
         <div>
           <h3 class="font-bold text-slate-900 text-base">Bảng quản trị Admin</h3>
-          <p class="text-xs text-slate-500">Quản lý bài tập, link Google Sheets và bảo mật</p>
+          <p class="text-xs text-slate-500">Quản lý nhóm thẻ, bài tập, link Google Sheets và bảo mật</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <button data-action="admin-logout" class="btn-fx px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold">Đăng xuất</button>
@@ -208,15 +209,26 @@
       <!-- THANH CHUYỂN 2 PHẦN -->
       <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl">
         <button id="tabBtnCreate" data-action="switch-admin-tab" data-tab="create" class="btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold">
-          Tạo bài & Mật khẩu
+          Tạo bài & Nhóm
         </button>
         <button id="tabBtnList" data-action="switch-admin-tab" data-tab="list" class="btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold">
           Tổng bài tập (<span id="adminListCount">0</span>)
         </button>
       </div>
 
-      <!-- PHẦN 1: TẠO BÀI TẬP & ĐỔI MẬT KHẨU -->
+      <!-- PHẦN 1: TẠO NHÓM THẺ, TẠO BÀI TẬP & ĐỔI MẬT KHẨU -->
       <div id="adminPanelCreate" class="space-y-4">
+        <div class="space-y-2.5 bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200">
+          <div class="text-xs font-bold uppercase tracking-wider text-indigo-700">Quản lý nhóm thẻ</div>
+          <form id="createGroupForm" class="flex gap-2">
+            <input id="inpGroupName" type="text" required placeholder="Tên nhóm thẻ mới..." class="flex-1 min-w-0 px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="btnCreateGroup" type="submit" class="btn-fx shrink-0 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-indigo-600 text-white text-xs sm:text-sm font-semibold">
+              + Tạo nhóm
+            </button>
+          </form>
+          <div id="adminGroupChips" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
         <form id="createDeckForm" class="space-y-3 bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200">
           <div class="text-xs font-bold uppercase tracking-wider text-indigo-700">Tạo & Xuất bài tập mới</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -228,6 +240,10 @@
               <label class="block text-xs font-semibold text-slate-700 mb-1">Tên bài tập / Chuyên đề</label>
               <input id="inpTitle" type="text" required placeholder="VD: Đề ôn tập chương 1" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nhóm thẻ (1 bài chỉ thuộc tối đa 1 nhóm & Tất cả)</label>
+            <select id="inpGroup" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Link Google Sheet của bài tập này</label>
@@ -250,10 +266,10 @@
         </form>
       </div>
 
-      <!-- PHẦN 2: TỔNG BÀI TẬP (CHI TIẾT, SỬA, ĐỔI LINK, SẮP XẾP, XÓA) -->
+      <!-- PHẦN 2: TỔNG BÀI TẬP (CHI TIẾT, SỬA, ĐỔI LINK, ĐỔI NHÓM, SẮP XẾP, XÓA) -->
       <div id="adminPanelList" class="hidden space-y-2.5">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-slate-500">Bấm <strong>Chi tiết</strong> để xem/sửa tên, môn, link Sheet; bấm <strong>↑ ↓</strong> để đổi vị trí.</span>
+          <span class="text-xs text-slate-500">Bấm <strong>Chi tiết</strong> để xem/sửa tên, môn, nhóm thẻ, link Sheet; bấm <strong>↑ ↓</strong> để đổi vị trí.</span>
         </div>
         <div id="manageDeckList" class="space-y-2.5"></div>
       </div>
@@ -307,6 +323,8 @@
     const state = {
       view: 'lobby',
       search: '',
+      activeGroup: 'Tất cả',
+      groups: [],
       decks: [],
       activeDeck: null,
       selectedTypes: [],
@@ -428,6 +446,9 @@
         const data = await res.json();
         if (Array.isArray(data?.decks)) {
           state.decks = data.decks;
+          const deckGroups = state.decks.map(d => d.group).filter(Boolean);
+          const apiGroups = Array.isArray(data.groups) ? data.groups : [];
+          state.groups = [...new Set([...apiGroups, ...deckGroups])];
           if (data.adminPassword) state.adminPassword = String(data.adminPassword);
           setBadge('live', 'Đã đồng bộ tự động');
           showToast(`Đã tải ${state.decks.length} bài tập từ Sheet Admin`);
@@ -453,6 +474,7 @@
           subject: d.subject,
           title: d.title,
           sheetUrl: d.sheetUrl,
+          group: d.group || '',
           order: i + 1
         }));
         const data = await callGas({ action: 'saveDecks', password: state.adminPassword, decks: cleanDecks });
@@ -460,6 +482,18 @@
         return true;
       } catch (err) {
         showToast(err.message || 'Lỗi đồng bộ Sheet Admin');
+        return false;
+      }
+    }
+
+    async function syncGroupsToAdminSheet() {
+      if (!GAS_API_URL) return true;
+      try {
+        const data = await callGas({ action: 'saveGroups', password: state.adminPassword, groups: state.groups });
+        if (!data?.ok) throw new Error(data?.error || 'Lỗi lưu nhóm thẻ');
+        return true;
+      } catch (err) {
+        showToast(err.message || 'Lỗi đồng bộ nhóm thẻ');
         return false;
       }
     }
@@ -523,7 +557,22 @@
       return [...new Set((deck.questions || []).map(q => q.type))];
     }
 
+    function buildGroupOptions(selected) {
+      const opts = [`<option value="">Chỉ nằm ở Tất cả (không thuộc nhóm riêng)</option>`];
+      state.groups.forEach(g => {
+        opts.push(`<option value="${esc(g)}" ${selected === g ? 'selected' : ''}>${esc(g)}</option>`);
+      });
+      return opts.join('');
+    }
+
     function renderLobby() {
+      const allGroups = ['Tất cả', ...state.groups];
+      if (!allGroups.includes(state.activeGroup)) state.activeGroup = 'Tất cả';
+      $('groupFilterBar').innerHTML = allGroups.map(g => {
+        const active = state.activeGroup === g;
+        return `<button data-action="filter-group" data-group="${esc(g)}" class="btn-fx px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}">${esc(g)}</button>`;
+      }).join('');
+
       if (state.loading && !state.decks.length) {
         $('deckGrid').innerHTML = `<div class="col-span-full card-box p-8 sm:p-10 flex flex-col items-center justify-center gap-3 text-slate-600 text-sm">
           <span class="w-7 h-7 rounded-full border-[3px] border-indigo-600 border-t-transparent animate-spin"></span>
@@ -533,9 +582,11 @@
       }
 
       const q = normStr(state.search);
-      const filtered = state.decks.filter(d =>
-        !q || normStr(d.subject).includes(q) || normStr(d.title).includes(q)
-      );
+      const filtered = state.decks.filter(d => {
+        const matchGroup = state.activeGroup === 'Tất cả' || (d.group || '') === state.activeGroup;
+        const matchSearch = !q || normStr(d.subject).includes(q) || normStr(d.title).includes(q);
+        return matchGroup && matchSearch;
+      });
 
       if (!state.decks.length) {
         $('deckGrid').innerHTML = `<div class="col-span-full card-box p-8 sm:p-10 text-center text-slate-400 text-sm">Chưa có bài tập nào. Admin vui lòng đăng nhập để thêm bài tập.</div>`;
@@ -548,7 +599,10 @@
         const qCount = d.questions?.length || 0;
         return `<article class="card-box p-4 sm:p-5 flex flex-col justify-between gap-3.5 hover:border-indigo-300 transition-colors min-w-0">
           <div class="space-y-2 min-w-0">
-            <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700">${esc(d.subject)}</span>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700">${esc(d.subject)}</span>
+              ${d.group ? `<span class="inline-block px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700">${esc(d.group)}</span>` : ''}
+            </div>
             <h3 class="font-bold text-slate-900 text-base leading-snug break-words">${esc(d.title)}</h3>
             <div class="flex flex-wrap gap-1.5">
               ${types.length ? types.map(t => `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">${esc(TYPE_LABELS[t] || t)}</span>`).join('') : '<span class="text-xs text-indigo-600">Tự động tải Sheet khi mở</span>'}
@@ -561,7 +615,7 @@
             </button>
           </div>
         </article>`;
-      }).join('') : `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Không tìm thấy môn học hoặc bài tập phù hợp.</div>`;
+      }).join('') : `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Không tìm thấy bài tập phù hợp trong mục này.</div>`;
     }
 
     function renderDetail() {
@@ -738,6 +792,17 @@
       renderMath($('questionArea'));
     }
 
+    function renderAdminGroups() {
+      $('adminGroupChips').innerHTML = state.groups.length
+        ? state.groups.map(g => `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold">
+            ${esc(g)}
+            <button type="button" data-action="del-group" data-group="${esc(g)}" class="hover:text-rose-600 font-bold">×</button>
+          </span>`).join('')
+        : `<span class="text-xs text-slate-400">Chưa có nhóm thẻ nào (tất cả bài đang nằm chung ở Tất cả).</span>`;
+      const curVal = $('inpGroup').value;
+      $('inpGroup').innerHTML = buildGroupOptions(curVal);
+    }
+
     function renderAdminModal() {
       $('adminListCount').textContent = state.decks.length;
       const isCreate = state.adminTab === 'create';
@@ -747,7 +812,8 @@
       $('tabBtnCreate').className = `btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold ${isCreate ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`;
       $('tabBtnList').className = `btn-fx py-2 rounded-lg text-xs sm:text-sm font-semibold ${!isCreate ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`;
 
-      if (!isCreate) renderManageList();
+      if (isCreate) renderAdminGroups();
+      else renderManageList();
     }
 
     function renderManageList() {
@@ -756,9 +822,10 @@
         return `<div class="rounded-xl border ${isEditing ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200 bg-white'} p-3 space-y-3">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2">
                 <span class="text-xs font-bold text-slate-400">#${idx + 1}</span>
                 <span class="text-xs font-semibold text-indigo-600">${esc(d.subject)}</span>
+                ${d.group ? `<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-medium">${esc(d.group)}</span>` : ''}
               </div>
               <div class="text-sm font-bold text-slate-800 break-words mt-0.5">${esc(d.title)}</div>
             </div>
@@ -780,6 +847,12 @@
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Tên bài tập</label>
                 <input id="editTitle-${esc(d.id)}" type="text" value="${esc(d.title)}" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
               </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nhóm thẻ (chỉ 1 nhóm & Tất cả)</label>
+              <select id="editGroup-${esc(d.id)}" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                ${buildGroupOptions(d.group || '')}
+              </select>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Link Google Sheet bài tập</label>
@@ -841,7 +914,10 @@
         $('confirmLeaveModal').close();
         switchView(target);
       } else if (act === 'refresh-data') autoLoadSheets();
-      else if (act === 'toggle-theme') {
+      else if (act === 'filter-group') {
+        state.activeGroup = btn.dataset.group;
+        renderLobby();
+      } else if (act === 'toggle-theme') {
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('quiz_theme', state.theme);
         applyTheme();
@@ -868,6 +944,19 @@
         updateAdminBtn();
         $('manageModal').close();
         showToast('Đã đăng xuất chế độ Admin');
+      } else if (act === 'del-group') {
+        const g = btn.dataset.group;
+        state.groups = state.groups.filter(x => x !== g);
+        let changedDecks = false;
+        state.decks.forEach(d => {
+          if (d.group === g) { d.group = ''; changedDecks = true; }
+        });
+        if (state.activeGroup === g) state.activeGroup = 'Tất cả';
+        await syncGroupsToAdminSheet();
+        if (changedDecks) await syncDecksToAdminSheet();
+        renderAdminGroups();
+        renderLobby();
+        showToast(`Đã xóa nhóm "${g}"`);
       } else if (act === 'toggle-edit-deck') {
         const id = btn.dataset.id;
         state.editingDeckId = state.editingDeckId === id ? null : id;
@@ -881,6 +970,7 @@
         if (!deck) return;
         const sub = $(`editSub-${id}`)?.value.trim();
         const title = $(`editTitle-${id}`)?.value.trim();
+        const grp = $(`editGroup-${id}`)?.value || '';
         const url = $(`editUrl-${id}`)?.value.trim();
         if (!sub || !title || !url) {
           showToast('Vui lòng nhập đủ Môn, Tên bài và Link Sheet');
@@ -888,6 +978,7 @@
         }
         deck.subject = sub;
         deck.title = title;
+        deck.group = grp;
         deck.sheetUrl = url;
         state.editingDeckId = null;
         await syncDecksToAdminSheet();
@@ -1008,6 +1099,22 @@
       }
     });
 
+    $('createGroupForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = $('inpGroupName').value.trim();
+      if (!name) return;
+      if (name === 'Tất cả' || state.groups.includes(name)) {
+        showToast('Nhóm thẻ này đã tồn tại');
+        return;
+      }
+      state.groups.push(name);
+      await syncGroupsToAdminSheet();
+      e.target.reset();
+      renderAdminGroups();
+      renderLobby();
+      showToast(`Đã tạo nhóm "${name}"`);
+    });
+
     $('changePassForm').addEventListener('submit', async e => {
       e.preventDefault();
       const oldPw = $('inpOldPass').value;
@@ -1042,6 +1149,7 @@
       e.preventDefault();
       const subject = $('inpSubject').value.trim();
       const title = $('inpTitle').value.trim();
+      const group = $('inpGroup').value || '';
       const sheetUrl = $('inpSheetUrl').value.trim();
       if (!subject || !title || !sheetUrl) return;
       const btn = $('btnCreateDeck');
@@ -1050,6 +1158,7 @@
         id: 'deck-' + Date.now(),
         subject,
         title,
+        group,
         sheetUrl,
         questions: []
       });
