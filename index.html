@@ -720,6 +720,7 @@
       } catch { return {}; }
     }
     function isGroupUnlockedToday(g) {
+      if (state.isAdmin) return true;
       if (!g || !state.groupPasswords[g]) return true;
       return getUnlockedGroupsToday()[g] === todayKey();
     }
@@ -1229,6 +1230,7 @@
         renderAdminModal();
       } else if (act === 'admin-logout') {
         state.isAdmin = false;
+        renderLobby();
         state.editingDeckId = null;
         updateAdminBtn();
         $('manageModal').close();
@@ -1515,6 +1517,7 @@
       const pw = $('inpAdminPass').value;
       if (pw === state.adminPassword) {
         state.isAdmin = true;
+        renderLobby();
         state.adminTab = 'create';
         state.editingDeckId = null;
         updateAdminBtn();
