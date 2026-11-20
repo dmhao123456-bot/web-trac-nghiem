@@ -414,6 +414,20 @@
     </form>
   </dialog>
 
+  <!-- MODAL LOADING KHI ADMIN ĐANG CẬP NHẬT -->
+  <dialog id="adminSyncDialog" class="rounded-2xl p-0 backdrop:bg-slate-900/50 max-w-xs w-[90%] shadow-2xl border border-slate-200">
+    <div class="p-5 flex flex-col items-center text-center gap-3.5">
+      <span class="w-8 h-8 rounded-full border-[3px] border-indigo-600 border-t-transparent animate-spin"></span>
+      <div class="space-y-1">
+        <div id="adminSyncText" class="text-sm font-bold text-slate-900">Đang cập nhật lên Sheet Admin...</div>
+        <div class="text-xs text-slate-500">Vui lòng không tắt trang web lúc này.</div>
+      </div>
+      <button type="button" data-action="cancel-admin-sync" class="btn-fx px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold border border-rose-200">
+        Hủy thao tác
+      </button>
+    </div>
+  </dialog>
+
   <!-- MỤC ĐANG TẢI VỀ (HIỂN THỊ TRÊN CẢ MÁY TÍNH & ĐIỆN THOẠI) -->
   <div id="loadingOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/25 backdrop-blur-[1px] flex items-center justify-center px-4">
     <div class="bg-white border border-slate-200 rounded-2xl shadow-xl px-6 py-4 flex items-center gap-3.5 max-w-xs w-full justify-center">
@@ -460,6 +474,9 @@
       pendingLeaveView: null,
       pendingAdminDelete: null,
       loading: false,
+      isAdminSyncing: false,
+      adminAbortCtrl: null,
+      lastStableSnapshot: null,
       isAdmin: false,
       adminTab: 'create',
       editingDeckId: null,
@@ -543,14 +560,58 @@
       b.innerHTML = `<span class="w-2 h-2 rounded-full ${dots[status] || dots.empty}"></span> ${esc(text)}`;
     }
 
-    async function callGas(payload) {
-      const res = await fetch(GAS_API_URL, {
+    async function callGas(payload, signal) {
+      const opts = {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
-      });
+      };
+      if (signal) opts.signal = signal;
+      const res = await fetch(GAS_API_URL, opts);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
+    }
+
+    function saveStableSnapshot() {
+      try {
+        state.lastStableSnapshot = JSON.stringify({
+          decks: state.decks,
+          groups: state.groups,
+          groupPasswords: state.groupPasswords,
+          subGroups: state.subGroups,
+          activeGroup: state.activeGroup,
+          activeSubGroup: state.activeSubGroup
+        });
+      } catch {}
+    }
+
+    function restoreStableSnapshot() {
+      if (!state.lastStableSnapshot) return;
+      try {
+        const snap = JSON.parse(state.lastStableSnapshot);
+        state.decks = snap.decks || [];
+        state.groups = snap.groups || [];
+        state.groupPasswords = snap.groupPasswords || {};
+        state.subGroups = snap.subGroups || {};
+        state.activeGroup = snap.activeGroup || 'Tất cả';
+        state.activeSubGroup = snap.activeSubGroup || null;
+      } catch {}
+    }
+
+    function beginAdminSync(msg = 'Đang cập nhật lên Sheet Admin...') {
+      state.isAdminSyncing = true;
+      state.adminAbortCtrl = new AbortController();
+      const dlg = $('adminSyncDialog');
+      if ($('adminSyncText')) $('adminSyncText').textContent = msg;
+      if (dlg && !dlg.open) dlg.showModal();
+      return state.adminAbortCtrl.signal;
+    }
+
+    function endAdminSync() {
+      state.isAdminSyncing = false;
+      state.adminAbortCtrl = null;
+      const dlg = $('adminSyncDialog');
+      if (dlg && dlg.open) dlg.close();
     }
 
     async function autoLoadSheets() {
@@ -583,6 +644,7 @@
           });
           if (data.adminPassword) state.adminPassword = String(data.adminPassword);
           setBadge('live', 'Đã đồng bộ tự động');
+          saveStableSnapshot();
         } else {
           throw new Error('Dữ liệu không hợp lệ');
         }
@@ -598,7 +660,8 @@
     }
 
     async function syncDecksToAdminSheet() {
-      if (!GAS_API_URL) return true;
+      if (!GAS_API_URL) { saveStableSnapshot(); return true; }
+      const signal = beginAdminSync('Đang lưu danh sách bài tập...');
       try {
         const cleanDecks = state.decks.map((d, i) => ({
           id: d.id,
@@ -611,36 +674,50 @@
           hidden: Boolean(d.hidden),
           order: i + 1
         }));
-        const data = await callGas({ action: 'saveDecks', password: state.adminPassword, decks: cleanDecks });
+        const data = await callGas({ action: 'saveDecks', password: state.adminPassword, decks: cleanDecks }, signal);
         if (!data?.ok) throw new Error(data?.error || 'Lỗi lưu Sheet Admin');
+        saveStableSnapshot();
         return true;
       } catch (err) {
+        if (err.name === 'AbortError') return false;
         showToast(err.message || 'Lỗi đồng bộ Sheet Admin');
         return false;
+      } finally {
+        endAdminSync();
       }
     }
 
     async function syncSubGroupsToAdminSheet() {
-      if (!GAS_API_URL) return true;
+      if (!GAS_API_URL) { saveStableSnapshot(); return true; }
+      const signal = beginAdminSync('Đang lưu hộp con...');
       try {
-        const data = await callGas({ action: 'saveSubGroups', password: state.adminPassword, subGroups: state.subGroups });
+        const data = await callGas({ action: 'saveSubGroups', password: state.adminPassword, subGroups: state.subGroups }, signal);
         if (!data?.ok) throw new Error(data?.error || 'Lỗi lưu hộp con');
+        saveStableSnapshot();
         return true;
       } catch (err) {
+        if (err.name === 'AbortError') return false;
         showToast(err.message || 'Lỗi đồng bộ hộp con');
         return false;
+      } finally {
+        endAdminSync();
       }
     }
 
     async function syncGroupsToAdminSheet() {
-      if (!GAS_API_URL) return true;
+      if (!GAS_API_URL) { saveStableSnapshot(); return true; }
+      const signal = beginAdminSync('Đang lưu nhóm thẻ...');
       try {
-        const data = await callGas({ action: 'saveGroups', password: state.adminPassword, groups: state.groups, groupPasswords: state.groupPasswords });
+        const data = await callGas({ action: 'saveGroups', password: state.adminPassword, groups: state.groups, groupPasswords: state.groupPasswords }, signal);
         if (!data?.ok) throw new Error(data?.error || 'Lỗi lưu nhóm thẻ');
+        saveStableSnapshot();
         return true;
       } catch (err) {
+        if (err.name === 'AbortError') return false;
         showToast(err.message || 'Lỗi đồng bộ nhóm thẻ');
         return false;
+      } finally {
+        endAdminSync();
       }
     }
 
@@ -1353,7 +1430,14 @@
 
       if (act === 'go-home') requestLeaveQuiz('lobby');
       else if (act === 'go-detail') requestLeaveQuiz('detail');
-      else if (act === 'cancel-leave') {
+      else if (act === 'cancel-admin-sync') {
+        if (state.adminAbortCtrl) state.adminAbortCtrl.abort();
+        restoreStableSnapshot();
+        endAdminSync();
+        renderAdminModal();
+        renderLobby();
+        showToast('Đã hủy thao tác và hoàn tác thay đổi');
+      } else if (act === 'cancel-leave') {
         state.pendingLeaveView = null;
         $('confirmLeaveModal').close();
       } else if (act === 'confirm-leave') {
@@ -1843,9 +1927,10 @@
       }
       const btn = $('btnChangePass');
       btn.disabled = true;
+      const signal = GAS_API_URL ? beginAdminSync('Đang đổi mật khẩu Admin...') : null;
       try {
         if (GAS_API_URL) {
-          const res = await callGas({ action: 'changePassword', oldPassword: oldPw, newPassword: newPw });
+          const res = await callGas({ action: 'changePassword', oldPassword: oldPw, newPassword: newPw }, signal);
           if (!res?.ok) throw new Error(res?.error || 'Lỗi đổi mật khẩu');
         }
         state.adminPassword = newPw;
@@ -1853,8 +1938,9 @@
         e.target.reset();
         showToast('Đã đổi mật khẩu Admin thành công');
       } catch (err) {
-        showToast(err.message || 'Không thể đổi mật khẩu');
+        if (err.name !== 'AbortError') showToast(err.message || 'Không thể đổi mật khẩu');
       } finally {
+        endAdminSync();
         btn.disabled = false;
       }
     });
@@ -2055,6 +2141,14 @@
         dragItem = null;
       });
     }
+
+    $('adminSyncDialog')?.addEventListener('cancel', e => { e.preventDefault(); });
+    window.addEventListener('beforeunload', e => {
+      if (state.isAdminSyncing) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 
     applyTheme();
     autoLoadSheets();
