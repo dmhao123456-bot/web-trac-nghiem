@@ -259,6 +259,18 @@
           <div id="adminGroupChips" class="flex flex-wrap gap-1.5"></div>
         </div>
 
+        <div class="space-y-2.5 bg-amber-50/50 p-3.5 sm:p-4 rounded-xl border border-amber-200/80">
+          <div class="text-xs font-bold uppercase tracking-wider text-amber-800">Quản lý Hộp con (Mục con trong thẻ)</div>
+          <form id="createSubGroupForm" class="flex flex-col sm:flex-row gap-2">
+            <select id="inpParentGroupForSub" class="sm:w-44 px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+            <input id="inpNewSubGroup" type="text" required placeholder="Tên hộp con mới (VD: Chương 1)..." class="flex-1 min-w-0 px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="btnCreateSubGroup" type="submit" class="btn-fx shrink-0 px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold">
+              + Tạo hộp con
+            </button>
+          </form>
+          <div id="adminSubGroupChips" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
         <form id="createDeckForm" class="space-y-3 bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200">
           <div class="text-xs font-bold uppercase tracking-wider text-indigo-700">Tạo & Xuất bài tập mới</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -278,8 +290,7 @@
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">Hộp con trong thẻ (tùy chọn)</label>
-              <input id="inpSubGroup" type="text" list="subGroupSuggest" placeholder="VD: Chương 1, Đề thi thử..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <datalist id="subGroupSuggest"></datalist>
+              <select id="inpSubGroup" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
             </div>
           </div>
           <div>
@@ -421,6 +432,7 @@
       activeSubGroup: null,
       groups: [],
       groupPasswords: {},
+      subGroups: {},
       pendingUnlockGroup: null,
       editingPassGroup: null,
       decks: [],
@@ -553,6 +565,13 @@
           const apiGroups = Array.isArray(data.groups) ? data.groups : [];
           state.groups = [...new Set([...apiGroups, ...deckGroups])];
           state.groupPasswords = (data.groupPasswords && typeof data.groupPasswords === 'object') ? data.groupPasswords : {};
+          const apiSubs = (data.subGroups && typeof data.subGroups === 'object') ? data.subGroups : {};
+          state.subGroups = {};
+          state.groups.forEach(g => {
+            const fromApi = Array.isArray(apiSubs[g]) ? apiSubs[g] : [];
+            const fromDecks = state.decks.filter(d => d.group === g && d.subGroup).map(d => d.subGroup);
+            state.subGroups[g] = [...new Set([...fromApi, ...fromDecks])];
+          });
           if (data.adminPassword) state.adminPassword = String(data.adminPassword);
           setBadge('live', 'Đã đồng bộ tự động');
         } else {
@@ -588,6 +607,18 @@
         return true;
       } catch (err) {
         showToast(err.message || 'Lỗi đồng bộ Sheet Admin');
+        return false;
+      }
+    }
+
+    async function syncSubGroupsToAdminSheet() {
+      if (!GAS_API_URL) return true;
+      try {
+        const data = await callGas({ action: 'saveSubGroups', password: state.adminPassword, subGroups: state.subGroups });
+        if (!data?.ok) throw new Error(data?.error || 'Lỗi lưu hộp con');
+        return true;
+      } catch (err) {
+        showToast(err.message || 'Lỗi đồng bộ hộp con');
         return false;
       }
     }
@@ -779,7 +810,7 @@
 
       const subBar = $('subGroupBar');
       const subNames = state.activeGroup !== 'Tất cả'
-        ? [...new Set(visibleDecks.filter(d => (d.group || '') === state.activeGroup && d.subGroup).map(d => d.subGroup))]
+        ? getSubGroupsFor(state.activeGroup)
         : [];
       if (state.activeSubGroup && !subNames.includes(state.activeSubGroup)) state.activeSubGroup = null;
 
@@ -1093,12 +1124,49 @@
       renderQuizPalette();
     }
 
+    function getSubGroupsFor(groupName) {
+      if (!groupName || groupName === 'Tất cả') return [];
+      const stored = Array.isArray(state.subGroups[groupName]) ? state.subGroups[groupName] : [];
+      const fromDecks = state.decks.filter(d => d.group === groupName && d.subGroup).map(d => d.subGroup);
+      return [...new Set([...stored, ...fromDecks])];
+    }
+
+    function buildSubGroupOptions(groupName, selected = '') {
+      const subs = getSubGroupsFor(groupName);
+      return `<option value="">-- Không vào hộp con --</option>` + subs.map(s =>
+        `<option value="${esc(s)}" ${s === selected ? 'selected' : ''}>📁 ${esc(s)}</option>`
+      ).join('');
+    }
+
     function refreshSubGroupSuggest(groupName) {
-      const dl = $('subGroupSuggest');
-      if (!dl) return;
-      const targetGroup = groupName !== undefined ? groupName : ($('inpGroup')?.value || '');
-      const subs = [...new Set(state.decks.filter(d => !targetGroup || d.group === targetGroup).map(d => d.subGroup).filter(Boolean))];
-      dl.innerHTML = subs.map(s => `<option value="${esc(s)}">`).join('');
+      const sel = $('inpSubGroup');
+      if (!sel) return;
+      const g = groupName !== undefined ? groupName : ($('inpGroup')?.value || '');
+      const cur = sel.value;
+      sel.innerHTML = buildSubGroupOptions(g, cur);
+    }
+
+    function renderAdminSubGroups() {
+      const parentSel = $('inpParentGroupForSub');
+      const chipsEl = $('adminSubGroupChips');
+      if (!parentSel || !chipsEl) return;
+      const curParent = parentSel.value;
+      if (!state.groups.length) {
+        parentSel.innerHTML = `<option value="">Chưa có nhóm thẻ</option>`;
+        chipsEl.innerHTML = `<span class="text-xs text-slate-400">Hãy tạo ít nhất 1 nhóm thẻ ở trên trước khi tạo hộp con.</span>`;
+        return;
+      }
+      const selectedParent = state.groups.includes(curParent) ? curParent : state.groups[0];
+      parentSel.innerHTML = state.groups.map(g => `<option value="${esc(g)}" ${g === selectedParent ? 'selected' : ''}>${esc(g)}</option>`).join('');
+      const subs = getSubGroupsFor(selectedParent);
+      chipsEl.innerHTML = subs.length
+        ? subs.map((sg, idx) => `<span draggable="true" data-drag-type="subgroup" data-drag-idx="${idx}" data-parent-group="${esc(selectedParent)}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100/80 text-amber-900 text-xs font-semibold cursor-grab active:cursor-grabbing select-none">
+            <button type="button" data-action="move-subgroup" data-group="${esc(selectedParent)}" data-idx="${idx}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} class="px-1 rounded hover:bg-amber-200 disabled:opacity-30 font-bold" title="Đẩy sang trái">←</button>
+            <span>📁 ${esc(sg)}</span>
+            <button type="button" data-action="move-subgroup" data-group="${esc(selectedParent)}" data-idx="${idx}" data-dir="1" ${idx === subs.length - 1 ? 'disabled' : ''} class="px-1 rounded hover:bg-amber-200 disabled:opacity-30 font-bold" title="Đẩy sang phải">→</button>
+            <button type="button" data-action="del-subgroup" data-group="${esc(selectedParent)}" data-subgroup="${esc(sg)}" class="ml-0.5 hover:text-rose-600 font-bold" title="Xóa hộp con">×</button>
+          </span>`).join('')
+        : `<span class="text-xs text-slate-400">Nhóm "${esc(selectedParent)}" chưa có hộp con nào.</span>`;
     }
 
     function renderAdminGroups() {
@@ -1114,6 +1182,7 @@
       const curVal = $('inpGroup').value;
       $('inpGroup').innerHTML = buildGroupOptions(curVal);
       refreshSubGroupSuggest($('inpGroup').value);
+      renderAdminSubGroups();
     }
 
     function renderAdminModal() {
@@ -1135,13 +1204,14 @@
       if (!filterOpts.includes(state.adminGroupFilter)) state.adminGroupFilter = 'Tất cả';
       $('adminManageFilterBar').innerHTML = filterOpts.map(g => {
         const active = state.adminGroupFilter === g;
-        return `<button data-action="admin-filter-group" data-group="${esc(g)}" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}">${esc(g)}</button>`;
+        const dropAttr = g === 'Tất cả' ? '' : `data-drop-group="${g === 'Chưa phân nhóm' ? '' : esc(g)}"`;
+        return `<button data-action="admin-filter-group" data-group="${esc(g)}" ${dropAttr} class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}">${esc(g)}</button>`;
       }).join('');
 
       const subBar = $('adminManageSubFilterBar');
       const groupDecks = state.decks.filter(d => d.group === state.adminGroupFilter);
       const subNames = (state.adminGroupFilter !== 'Tất cả' && state.adminGroupFilter !== 'Chưa phân nhóm')
-        ? [...new Set(groupDecks.map(d => d.subGroup).filter(Boolean))]
+        ? getSubGroupsFor(state.adminGroupFilter)
         : [];
       if (subNames.length) {
         const hasNoSub = groupDecks.some(d => !d.subGroup);
@@ -1150,7 +1220,8 @@
         subBar.innerHTML = subOpts.map(sg => {
           const active = state.adminSubGroupFilter === sg;
           const label = (sg === 'Tất cả hộp' || sg === 'Chưa vào hộp') ? sg : `📁 ${sg}`;
-          return `<button data-action="admin-filter-subgroup" data-subgroup="${esc(sg)}" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100'}">${esc(label)}</button>`;
+          const dropSubAttr = sg === 'Tất cả hộp' ? '' : `data-drop-subgroup="${sg === 'Chưa vào hộp' ? '' : esc(sg)}"`;
+          return `<button data-action="admin-filter-subgroup" data-subgroup="${esc(sg)}" ${dropSubAttr} class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100'}">${esc(label)}</button>`;
         }).join('');
         subBar.classList.remove('hidden');
       } else {
@@ -1215,7 +1286,7 @@
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Hộp con trong thẻ (tùy chọn)</label>
-                <input id="editSubGroup-${esc(d.id)}" type="text" list="subGroupSuggest" value="${esc(d.subGroup || '')}" placeholder="VD: Chương 1, Đề thi thử..." class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select id="editSubGroup-${esc(d.id)}" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">${buildSubGroupOptions(d.group || '', d.subGroup || '')}</select>
               </div>
             </div>
             <div>
@@ -1341,6 +1412,25 @@
         updateAdminBtn();
         $('manageModal').close();
         showToast('Đã đăng xuất chế độ Admin');
+      } else if (act === 'move-subgroup') {
+        const g = btn.dataset.group;
+        const idx = Number(btn.dataset.idx);
+        const target = idx + Number(btn.dataset.dir);
+        const arr = getSubGroupsFor(g);
+        if (target < 0 || target >= arr.length) return;
+        [arr[idx], arr[target]] = [arr[target], arr[idx]];
+        state.subGroups[g] = arr;
+        renderAdminSubGroups();
+        refreshSubGroupSuggest($('inpGroup').value);
+        renderLobby();
+        await syncSubGroupsToAdminSheet();
+      } else if (act === 'del-subgroup') {
+        const g = btn.dataset.group;
+        const sg = btn.dataset.subgroup;
+        state.pendingAdminDelete = { type: 'subgroup', group: g, subGroup: sg };
+        $('confirmAdminDeleteTitle').textContent = 'Xóa hộp con?';
+        $('confirmAdminDeleteMsg').textContent = `Bạn có chắc chắn muốn xóa hộp con "${sg}" trong nhóm "${g}" không? Các bài tập bên trong vẫn được giữ lại trong nhóm "${g}".`;
+        $('confirmAdminDeleteModal').showModal();
       } else if (act === 'move-group') {
         const idx = Number(btn.dataset.idx);
         const target = idx + Number(btn.dataset.dir);
@@ -1415,6 +1505,8 @@
           const g = pending.group;
           state.groups = state.groups.filter(x => x !== g);
           delete state.groupPasswords[g];
+          delete state.subGroups[g];
+          await syncSubGroupsToAdminSheet();
           let changedDecks = false;
           state.decks.forEach(d => {
             if (d.group === g) { d.group = ''; changedDecks = true; }
@@ -1426,6 +1518,21 @@
           renderManageList();
           renderLobby();
           showToast(`Đã xóa nhóm "${g}"`);
+        } else if (pending.type === 'subgroup') {
+          const { group: g, subGroup: sg } = pending;
+          state.subGroups[g] = getSubGroupsFor(g).filter(x => x !== sg);
+          let changedDecks = false;
+          state.decks.forEach(d => {
+            if (d.group === g && d.subGroup === sg) { d.subGroup = ''; changedDecks = true; }
+          });
+          if (state.activeSubGroup === sg) state.activeSubGroup = null;
+          await syncSubGroupsToAdminSheet();
+          if (changedDecks) await syncDecksToAdminSheet();
+          renderAdminSubGroups();
+          refreshSubGroupSuggest($('inpGroup').value);
+          renderManageList();
+          renderLobby();
+          showToast(`Đã xóa hộp con "${sg}"`);
         } else if (pending.type === 'deck') {
           const removed = state.decks.splice(pending.idx, 1)[0];
           if (removed && state.editingDeckId === removed.id) state.editingDeckId = null;
@@ -1642,6 +1749,26 @@
       }
     });
 
+    $('createSubGroupForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const parentG = $('inpParentGroupForSub').value;
+      const sgName = $('inpNewSubGroup').value.trim();
+      if (!parentG) { showToast('Vui lòng tạo hoặc chọn nhóm thẻ trước'); return; }
+      if (!sgName) return;
+      const existing = getSubGroupsFor(parentG);
+      if (existing.includes(sgName)) {
+        showToast('Hộp con này đã tồn tại trong nhóm');
+        return;
+      }
+      state.subGroups[parentG] = [...existing, sgName];
+      await syncSubGroupsToAdminSheet();
+      $('inpNewSubGroup').value = '';
+      renderAdminSubGroups();
+      refreshSubGroupSuggest($('inpGroup').value);
+      renderLobby();
+      showToast(`Đã tạo hộp con "${sgName}" trong "${parentG}"`);
+    });
+
     $('createGroupForm').addEventListener('submit', async e => {
       e.preventDefault();
       const name = $('inpGroupName').value.trim();
@@ -1755,6 +1882,12 @@
 
     document.addEventListener('input', e => {
       if (e.target.id === 'inpGroup') { refreshSubGroupSuggest(e.target.value); }
+      else if (e.target.id === 'inpParentGroupForSub') { renderAdminSubGroups(); }
+      else if (e.target.id && e.target.id.startsWith('editGroup-')) {
+        const did = e.target.id.slice('editGroup-'.length);
+        const subSel = $(`editSubGroup-${did}`);
+        if (subSel) subSel.innerHTML = buildSubGroupOptions(e.target.value, '');
+      }
       else if (e.target.id === 'searchInput') {
         state.search = e.target.value;
         renderLobby();
@@ -1770,8 +1903,8 @@
     const manageModalEl = $('manageModal');
     if (manageModalEl) {
       const clearDragUI = () => {
-        manageModalEl.querySelectorAll('[data-drag-type]').forEach(el => {
-          el.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
+        manageModalEl.querySelectorAll('[data-drag-type], [data-drop-subgroup], [data-drop-group]').forEach(el => {
+          el.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500', 'ring-amber-500', 'scale-105');
         });
       };
 
@@ -1781,7 +1914,9 @@
         dragItem = {
           type: el.dataset.dragType,
           idx: Number(el.dataset.dragIdx),
-          toIdx: null
+          toIdx: null,
+          dropSubGroup: undefined,
+          dropGroup: undefined
         };
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = 'move';
@@ -1794,10 +1929,32 @@
         if (!dragItem) return;
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
-        manageModalEl.querySelectorAll(`[data-drag-type="${dragItem.type}"]`).forEach(el => {
-          el.classList.remove('ring-2', 'ring-indigo-500');
+        manageModalEl.querySelectorAll(`[data-drag-type="${dragItem.type}"], [data-drop-subgroup], [data-drop-group]`).forEach(el => {
+          el.classList.remove('ring-2', 'ring-indigo-500', 'ring-amber-500', 'scale-105');
         });
+
+        if (dragItem.type === 'deck') {
+          const dropSub = e.target.closest('[data-drop-subgroup]');
+          if (dropSub) {
+            dragItem.dropSubGroup = dropSub.dataset.dropSubgroup;
+            dragItem.dropGroup = undefined;
+            dragItem.toIdx = null;
+            dropSub.classList.add('ring-2', 'ring-amber-500', 'scale-105');
+            return;
+          }
+          const dropGrp = e.target.closest('[data-drop-group]');
+          if (dropGrp) {
+            dragItem.dropGroup = dropGrp.dataset.dropGroup;
+            dragItem.dropSubGroup = undefined;
+            dragItem.toIdx = null;
+            dropGrp.classList.add('ring-2', 'ring-indigo-500', 'scale-105');
+            return;
+          }
+        }
+
+        dragItem.dropSubGroup = undefined;
+        dragItem.dropGroup = undefined;
+        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
         if (target) {
           const tIdx = Number(target.dataset.dragIdx);
           if (!Number.isNaN(tIdx) && tIdx !== dragItem.idx) {
@@ -1813,10 +1970,44 @@
       manageModalEl.addEventListener('drop', async e => {
         if (!dragItem) return;
         e.preventDefault();
-        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
-        const toIdx = target ? Number(target.dataset.dragIdx) : dragItem.toIdx;
         const fromIdx = dragItem.idx;
         const type = dragItem.type;
+
+        if (type === 'deck') {
+          const dropSub = e.target.closest('[data-drop-subgroup]');
+          const subVal = dropSub ? dropSub.dataset.dropSubgroup : dragItem.dropSubGroup;
+          if (subVal !== undefined) {
+            dragItem = null;
+            clearDragUI();
+            const deck = state.decks[fromIdx];
+            if (!deck || deck.subGroup === subVal) return;
+            deck.subGroup = subVal;
+            renderManageList();
+            renderLobby();
+            await syncDecksToAdminSheet();
+            showToast(subVal ? `Đã chuyển "${deck.title}" vào hộp "${subVal}"` : `Đã đưa "${deck.title}" ra khỏi hộp con`);
+            return;
+          }
+
+          const dropGrp = e.target.closest('[data-drop-group]');
+          const grpVal = dropGrp ? dropGrp.dataset.dropGroup : dragItem.dropGroup;
+          if (grpVal !== undefined) {
+            dragItem = null;
+            clearDragUI();
+            const deck = state.decks[fromIdx];
+            if (!deck || deck.group === grpVal) return;
+            deck.group = grpVal;
+            deck.subGroup = '';
+            renderManageList();
+            renderLobby();
+            await syncDecksToAdminSheet();
+            showToast(grpVal ? `Đã chuyển "${deck.title}" vào nhóm "${grpVal}"` : `Đã đưa "${deck.title}" về mục Tất cả`);
+            return;
+          }
+        }
+
+        const target = e.target.closest(`[data-drag-type="${type}"]`);
+        const toIdx = target ? Number(target.dataset.dragIdx) : dragItem.toIdx;
         dragItem = null;
         clearDragUI();
         if (toIdx === null || Number.isNaN(fromIdx) || Number.isNaN(toIdx) || fromIdx === toIdx) return;
@@ -1828,6 +2019,18 @@
           renderLobby();
           await syncGroupsToAdminSheet();
           showToast('Đã đổi thứ tự nhóm thẻ');
+        } else if (type === 'subgroup') {
+          const parentG = $('inpParentGroupForSub')?.value;
+          if (!parentG) return;
+          const arr = getSubGroupsFor(parentG);
+          const [moved] = arr.splice(fromIdx, 1);
+          arr.splice(toIdx, 0, moved);
+          state.subGroups[parentG] = arr;
+          renderAdminSubGroups();
+          refreshSubGroupSuggest($('inpGroup').value);
+          renderLobby();
+          await syncSubGroupsToAdminSheet();
+          showToast('Đã đổi thứ tự hộp con');
         } else if (type === 'deck') {
           const [moved] = state.decks.splice(fromIdx, 1);
           state.decks.splice(toIdx, 0, moved);
