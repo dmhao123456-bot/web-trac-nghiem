@@ -1114,86 +1114,7 @@
       } else if (act === 'toggle-theme') {
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('quiz_theme', state.theme);
-        // Kéo thả sắp xếp thứ tự nhóm thẻ & bài tập trong Admin
-    let dragItem = null;
-    const manageModalEl = $('manageModal');
-    if (manageModalEl) {
-      const clearDragUI = () => {
-        manageModalEl.querySelectorAll('[data-drag-type]').forEach(el => {
-          el.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
-        });
-      };
-
-      manageModalEl.addEventListener('dragstart', e => {
-        const el = e.target.closest('[data-drag-type]');
-        if (!el || el.getAttribute('draggable') !== 'true') return;
-        dragItem = {
-          type: el.dataset.dragType,
-          idx: Number(el.dataset.dragIdx),
-          toIdx: null
-        };
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', String(dragItem.idx));
-        }
-        requestAnimationFrame(() => el.classList.add('opacity-50'));
-      });
-
-      const handleDragOver = e => {
-        if (!dragItem) return;
-        e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
-        manageModalEl.querySelectorAll(`[data-drag-type="${dragItem.type}"]`).forEach(el => {
-          el.classList.remove('ring-2', 'ring-indigo-500');
-        });
-        if (target) {
-          const tIdx = Number(target.dataset.dragIdx);
-          if (!Number.isNaN(tIdx) && tIdx !== dragItem.idx) {
-            dragItem.toIdx = tIdx;
-            target.classList.add('ring-2', 'ring-indigo-500');
-          }
-        }
-      };
-
-      manageModalEl.addEventListener('dragenter', handleDragOver);
-      manageModalEl.addEventListener('dragover', handleDragOver);
-
-      manageModalEl.addEventListener('drop', async e => {
-        if (!dragItem) return;
-        e.preventDefault();
-        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
-        const toIdx = target ? Number(target.dataset.dragIdx) : dragItem.toIdx;
-        const fromIdx = dragItem.idx;
-        const type = dragItem.type;
-        dragItem = null;
-        clearDragUI();
-        if (toIdx === null || Number.isNaN(fromIdx) || Number.isNaN(toIdx) || fromIdx === toIdx) return;
-
-        if (type === 'group') {
-          const [moved] = state.groups.splice(fromIdx, 1);
-          state.groups.splice(toIdx, 0, moved);
-          renderAdminGroups();
-          renderLobby();
-          await syncGroupsToAdminSheet();
-          showToast('Đã đổi thứ tự nhóm thẻ');
-        } else if (type === 'deck') {
-          const [moved] = state.decks.splice(fromIdx, 1);
-          state.decks.splice(toIdx, 0, moved);
-          renderManageList();
-          renderLobby();
-          await syncDecksToAdminSheet();
-          showToast('Đã đổi thứ tự bài tập');
-        }
-      });
-
-      manageModalEl.addEventListener('dragend', () => {
-        clearDragUI();
-        dragItem = null;
-      });
-    }
-
-    applyTheme();
+        applyTheme();
       } else if (act === 'open-admin') {
         if (state.isAdmin) {
           state.editingDeckId = null;
@@ -1594,6 +1515,85 @@
         renderQuizPalette();
       }
     });
+
+    // Kéo thả sắp xếp thứ tự nhóm thẻ & bài tập trong Admin
+    let dragItem = null;
+    const manageModalEl = $('manageModal');
+    if (manageModalEl) {
+      const clearDragUI = () => {
+        manageModalEl.querySelectorAll('[data-drag-type]').forEach(el => {
+          el.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
+        });
+      };
+
+      manageModalEl.addEventListener('dragstart', e => {
+        const el = e.target.closest('[data-drag-type]');
+        if (!el || el.getAttribute('draggable') !== 'true') return;
+        dragItem = {
+          type: el.dataset.dragType,
+          idx: Number(el.dataset.dragIdx),
+          toIdx: null
+        };
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(dragItem.idx));
+        }
+        requestAnimationFrame(() => el.classList.add('opacity-50'));
+      });
+
+      const handleDragOver = e => {
+        if (!dragItem) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
+        manageModalEl.querySelectorAll(`[data-drag-type="${dragItem.type}"]`).forEach(el => {
+          el.classList.remove('ring-2', 'ring-indigo-500');
+        });
+        if (target) {
+          const tIdx = Number(target.dataset.dragIdx);
+          if (!Number.isNaN(tIdx) && tIdx !== dragItem.idx) {
+            dragItem.toIdx = tIdx;
+            target.classList.add('ring-2', 'ring-indigo-500');
+          }
+        }
+      };
+
+      manageModalEl.addEventListener('dragenter', handleDragOver);
+      manageModalEl.addEventListener('dragover', handleDragOver);
+
+      manageModalEl.addEventListener('drop', async e => {
+        if (!dragItem) return;
+        e.preventDefault();
+        const target = e.target.closest(`[data-drag-type="${dragItem.type}"]`);
+        const toIdx = target ? Number(target.dataset.dragIdx) : dragItem.toIdx;
+        const fromIdx = dragItem.idx;
+        const type = dragItem.type;
+        dragItem = null;
+        clearDragUI();
+        if (toIdx === null || Number.isNaN(fromIdx) || Number.isNaN(toIdx) || fromIdx === toIdx) return;
+
+        if (type === 'group') {
+          const [moved] = state.groups.splice(fromIdx, 1);
+          state.groups.splice(toIdx, 0, moved);
+          renderAdminGroups();
+          renderLobby();
+          await syncGroupsToAdminSheet();
+          showToast('Đã đổi thứ tự nhóm thẻ');
+        } else if (type === 'deck') {
+          const [moved] = state.decks.splice(fromIdx, 1);
+          state.decks.splice(toIdx, 0, moved);
+          renderManageList();
+          renderLobby();
+          await syncDecksToAdminSheet();
+          showToast('Đã đổi thứ tự bài tập');
+        }
+      });
+
+      manageModalEl.addEventListener('dragend', () => {
+        clearDragUI();
+        dragItem = null;
+      });
+    }
 
     applyTheme();
     autoLoadSheets();
