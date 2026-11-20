@@ -1184,7 +1184,7 @@
           : '';
 
         const explainHtml = state.submitted && q.explain
-          ? `<div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed break-words"><strong>Lời giải từ Sheet:</strong> ${esc(q.explain)}</div>`
+          ? `<div class="mt-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm lg:text-[15px] text-amber-900 leading-relaxed whitespace-pre-line break-words"><strong class="block mb-1">💡 Lời giải chi tiết:</strong>${esc(q.explain)}</div>`
           : '';
 
         return `<article id="qcard-${esc(q.id)}" class="card-box p-4 sm:p-5 lg:p-6 min-w-0 scroll-mt-44">
