@@ -171,6 +171,21 @@
         </div>
       </div>
 
+      <!-- BƯỚC 4: CHIA NHỎ CỤM CÂU ĐỂ ÔN -->
+      <div class="card-box p-4 sm:p-5 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm sm:text-base">4. Chia nhỏ cụm câu để ôn (tùy chọn)</h3>
+            <p class="text-xs text-slate-500">Chia đề dài thành từng cụm nhỏ (10, 20, 30 câu hoặc tự nhập) để ôn từng phần nhẹ nhàng hơn.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+            <div id="chunkSizePresetBar" class="flex flex-wrap gap-1.5"></div>
+            <input id="inpCustomChunk" type="number" min="1" max="999" placeholder="Số câu..." class="w-24 px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+        <div id="chunkPillList" class="hidden flex flex-wrap gap-1.5 pt-1 border-t border-slate-100"></div>
+      </div>
+
       <!-- THANH BẮT ĐẦU -->
       <div class="card-box p-4 bg-indigo-50/70 border-indigo-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div id="selectionSummary" class="text-xs sm:text-sm text-slate-700 font-medium"></div>
@@ -201,6 +216,7 @@
           </div>
         </div>
         <div id="resultFilterBar" class="hidden pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 sm:gap-2"></div>
+        <div id="chunkPostBar" class="hidden pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 sm:gap-2"></div>
       </div>
 
       <div class="lg:flex lg:items-start lg:gap-6">
@@ -362,10 +378,22 @@
   <dialog id="confirmLeaveModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-sm w-[92%] shadow-xl border border-slate-200">
     <div class="p-5 space-y-4">
       <h3 class="font-bold text-slate-900 text-base">Rời khỏi gói ôn tập?</h3>
-      <p class="text-sm text-slate-600 leading-relaxed">Bạn có chắc chắn muốn rời khỏi gói bài tập hiện tại không? Các câu đã chọn sẽ không được lưu.</p>
+      <p id="confirmLeaveMsg" class="text-sm text-slate-600 leading-relaxed">Bạn có chắc chắn muốn rời khỏi gói bài tập hiện tại không? Các câu đã chọn sẽ không được lưu.</p>
       <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2 pt-1">
         <button data-action="cancel-leave" class="btn-fx px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Ở lại làm tiếp</button>
         <button data-action="confirm-leave" class="btn-fx px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Chắc chắn rời</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL XÁC NHẬN LÀM LẠI CÁC CÂU SAI -->
+  <dialog id="confirmRetryModal" class="rounded-2xl p-0 backdrop:bg-slate-900/40 max-w-sm w-[92%] shadow-xl border border-slate-200">
+    <div class="p-5 space-y-4">
+      <h3 class="font-bold text-slate-900 text-base">Làm lại các câu sai?</h3>
+      <p id="confirmRetryMsg" class="text-sm text-slate-600 leading-relaxed"></p>
+      <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2 pt-1">
+        <button data-action="cancel-retry" class="btn-fx px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">Hủy</button>
+        <button data-action="confirm-retry" class="btn-fx px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Chắc chắn làm lại</button>
       </div>
     </div>
   </dialog>
@@ -471,6 +499,10 @@
       selectedTypes: [],
       selectedParts: [],
       shuffleEnabled: false,
+      chunkSize: 0,
+      chunkIndex: 0,
+      chunkPool: [],
+      completedChunks: {},
       quizQuestions: [],
       answers: {},
       flags: {},
@@ -756,6 +788,7 @@
       try {
         localStorage.setItem(getDraftKey(state.activeDeck.id), JSON.stringify({
           quizQuestions: state.quizQuestions,
+          chunkPool: state.chunkPool,
           answers: state.answers,
           flags: state.flags,
           shuffleEnabled: state.shuffleEnabled,
@@ -1037,19 +1070,52 @@
       $('btnOrderShuffle').className = `btn-fx px-3 py-2 rounded-xl border text-xs font-semibold ${state.shuffleEnabled ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`;
 
       const matched = getMatchedQuestions();
-      $('btnLaunchQuiz').disabled = matched.length === 0;
+      const presets = [
+        { val: 0, label: 'Làm hết' },
+        { val: 10, label: '10 câu' },
+        { val: 20, label: '20 câu' },
+        { val: 30, label: '30 câu' },
+        { val: 50, label: '50 câu' }
+      ];
+      $('chunkSizePresetBar').innerHTML = presets.map(p => {
+        const active = state.chunkSize === p.val;
+        return `<button type="button" data-action="set-chunk-size" data-val="${p.val}" class="btn-fx px-2.5 py-1.5 rounded-xl border text-xs font-semibold ${active ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">${p.label}</button>`;
+      }).join('');
+
+      const chunkListEl = $('chunkPillList');
+      if (state.chunkSize > 0 && matched.length > 0) {
+        const totalChunks = Math.ceil(matched.length / state.chunkSize);
+        if (state.chunkIndex >= totalChunks) state.chunkIndex = 0;
+        chunkListEl.innerHTML = Array.from({ length: totalChunks }, (_, idx) => {
+          const start = idx * state.chunkSize + 1;
+          const end = Math.min((idx + 1) * state.chunkSize, matched.length);
+          const active = state.chunkIndex === idx;
+          return `<button type="button" data-action="set-chunk-index" data-idx="${idx}" class="btn-fx px-3 py-1.5 rounded-xl border text-xs font-semibold ${active ? 'bg-amber-500 text-white border-amber-500 shadow-sm' : 'bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100'}">Cụm ${idx + 1} (${start}–${end})</button>`;
+        }).join('');
+        chunkListEl.classList.remove('hidden');
+      } else {
+        state.chunkIndex = 0;
+        chunkListEl.classList.add('hidden');
+        chunkListEl.innerHTML = '';
+      }
+
+      const finalList = getChunkedQuestions(matched);
+      $('btnLaunchQuiz').disabled = finalList.length === 0;
       if (matched.length === 0) {
         $('selectionSummary').innerHTML = `<span class="text-slate-600">Hãy chọn <strong>dạng bài</strong> và <strong>phần ôn</strong> bạn muốn làm.</span>`;
       } else {
         const breakdown = state.selectedTypes
           .map(t => {
-            const c = matched.filter(q => q.type === t).length;
+            const c = finalList.filter(q => q.type === t).length;
             return c ? `${c} ${TYPE_LABELS[t] || t}` : '';
           })
           .filter(Boolean)
           .join(', ');
         const modeText = state.shuffleEnabled ? 'Đảo ngẫu nhiên' : 'Thứ tự gốc';
-        $('selectionSummary').innerHTML = `Đã chọn: <strong class="text-indigo-700">${matched.length} câu hỏi</strong> (${esc(breakdown)}) • ${modeText}`;
+        const chunkText = (state.chunkSize > 0 && matched.length > state.chunkSize)
+          ? ` • Cụm ${state.chunkIndex + 1} (${state.chunkIndex * state.chunkSize + 1}–${Math.min((state.chunkIndex + 1) * state.chunkSize, matched.length)} / ${matched.length})`
+          : '';
+        $('selectionSummary').innerHTML = `Đã chọn: <strong class="text-indigo-700">${finalList.length} câu hỏi</strong> (${esc(breakdown)}) • ${modeText}${chunkText}`;
       }
     }
 
@@ -1060,6 +1126,12 @@
         state.selectedTypes.includes(q.type) &&
         state.selectedParts.includes(cleanPartName(q.part))
       );
+    }
+
+    function getChunkedQuestions(matched) {
+      if (!state.chunkSize || state.chunkSize <= 0 || matched.length <= state.chunkSize) return matched;
+      const start = state.chunkIndex * state.chunkSize;
+      return matched.slice(start, start + state.chunkSize);
     }
 
     function renderQuizPalette() {
@@ -1104,7 +1176,35 @@
       const list = state.quizQuestions;
       if (!deck) return;
       $('quizTitle').textContent = deck.title;
-      $('quizMeta').textContent = `${deck.subject} • ${list.length} câu (${state.shuffleEnabled ? 'đã đảo' : 'thứ tự gốc'})`;
+      const totalChunks = (state.chunkSize > 0 && state.chunkPool.length > state.chunkSize) ? Math.ceil(state.chunkPool.length / state.chunkSize) : 1;
+      const chunkPrefix = totalChunks > 1 ? `Cụm ${state.chunkIndex + 1}/${totalChunks} • ` : '';
+      $('quizMeta').textContent = `${deck.subject} • ${chunkPrefix}${list.length} câu (${state.shuffleEnabled ? 'đã đảo' : 'thứ tự gốc'})`;
+
+      const chunkPostBar = $('chunkPostBar');
+      if (chunkPostBar) {
+        if (state.submitted && totalChunks > 1) {
+          const hasNext = state.chunkIndex < totalChunks - 1;
+          const nextBtn = hasNext
+            ? `<button type="button" data-action="quiz-goto-chunk" data-idx="${state.chunkIndex + 1}" class="btn-fx px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">Tiếp tục Cụm ${state.chunkIndex + 2} →</button>`
+            : '';
+          const chunkPills = Array.from({ length: totalChunks }, (_, idx) => {
+            const s = idx * state.chunkSize + 1;
+            const e = Math.min((idx + 1) * state.chunkSize, state.chunkPool.length);
+            const active = idx === state.chunkIndex;
+            const done = Boolean(state.completedChunks[idx]);
+            let cls = 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100';
+            if (active) cls = 'bg-indigo-600 text-white border-indigo-600 shadow-sm';
+            else if (done) cls = 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100';
+            return `<button type="button" data-action="quiz-goto-chunk" data-idx="${idx}" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold border ${cls}">${done ? '✓ ' : ''}Cụm ${idx + 1} (${s}–${e})</button>`;
+          }).join('');
+          const exitBtn = `<button type="button" data-action="go-detail" class="btn-fx px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700">← Ra ngoài</button>`;
+          chunkPostBar.innerHTML = nextBtn + chunkPills + exitBtn;
+          chunkPostBar.classList.remove('hidden');
+        } else {
+          chunkPostBar.classList.add('hidden');
+          chunkPostBar.innerHTML = '';
+        }
+      }
 
       const filterBar = $('resultFilterBar');
       if (state.submitted) {
@@ -1430,10 +1530,21 @@
     }
 
     function requestLeaveQuiz(targetView) {
-      if (state.view === 'quiz' && !state.submitted) {
-        state.pendingLeaveView = targetView;
-        $('confirmLeaveModal').showModal();
-        return;
+      if (state.view === 'quiz') {
+        const totalChunks = (state.chunkSize > 0 && state.chunkPool.length > state.chunkSize) ? Math.ceil(state.chunkPool.length / state.chunkSize) : 1;
+        const doneChunks = Object.keys(state.completedChunks).length;
+        if (!state.submitted) {
+          state.pendingLeaveView = targetView;
+          $('confirmLeaveMsg').textContent = 'Bạn có chắc chắn muốn rời khỏi gói bài tập hiện tại không? Các câu đã chọn chưa nộp sẽ không được lưu.';
+          $('confirmLeaveModal').showModal();
+          return;
+        }
+        if (totalChunks > 1 && doneChunks < totalChunks) {
+          state.pendingLeaveView = targetView;
+          $('confirmLeaveMsg').textContent = `Bạn mới hoàn thành ${doneChunks}/${totalChunks} cụm câu. Bạn có chắc chắn muốn thoát ra ngoài không?`;
+          $('confirmLeaveModal').showModal();
+          return;
+        }
       }
       switchView(targetView);
     }
@@ -1656,6 +1767,9 @@
         state.activeDeck = deck;
         state.selectedTypes = [];
         state.selectedParts = [];
+        state.chunkSize = 0;
+        state.chunkIndex = 0;
+        if ($('inpCustomChunk')) $('inpCustomChunk').value = '';
         switchView('detail');
       } else if (act === 'toggle-type') {
         const t = btn.dataset.type;
@@ -1682,13 +1796,23 @@
       } else if (act === 'parts-none') {
         state.selectedParts = [];
         renderDetail();
+      } else if (act === 'set-chunk-size') {
+        state.chunkSize = Number(btn.dataset.val) || 0;
+        state.chunkIndex = 0;
+        if ($('inpCustomChunk')) $('inpCustomChunk').value = state.chunkSize > 0 ? String(state.chunkSize) : '';
+        renderDetail();
+      } else if (act === 'set-chunk-index') {
+        state.chunkIndex = Number(btn.dataset.idx) || 0;
+        renderDetail();
       } else if (act === 'set-shuffle') {
         state.shuffleEnabled = btn.dataset.val === '1';
         renderDetail();
       } else if (act === 'launch-quiz') {
-        const matched = getMatchedQuestions();
-        if (!matched.length) return;
-        state.quizQuestions = prepareQuizQuestions(matched, state.shuffleEnabled);
+        const allMatched = getMatchedQuestions();
+        if (!allMatched.length) return;
+        state.chunkPool = prepareQuizQuestions(allMatched, state.shuffleEnabled);
+        state.completedChunks = {};
+        state.quizQuestions = getChunkedQuestions(state.chunkPool);
         state.answers = {};
         state.flags = {};
         state.quizFilter = 'all';
@@ -1698,6 +1822,24 @@
         $('quizScoreBadge').classList.add('hidden');
         $('btnSubmitQuiz').classList.remove('hidden');
         switchView('quiz');
+      } else if (act === 'quiz-goto-chunk') {
+        const idx = Number(btn.dataset.idx);
+        if (Number.isNaN(idx) || !state.chunkPool.length || state.chunkSize <= 0) return;
+        const totalChunks = Math.ceil(state.chunkPool.length / state.chunkSize);
+        if (idx < 0 || idx >= totalChunks) return;
+        state.chunkIndex = idx;
+        state.quizQuestions = getChunkedQuestions(state.chunkPool);
+        state.answers = {};
+        state.flags = {};
+        state.quizFilter = 'all';
+        state.submitted = false;
+        state.resultFilter = 'all';
+        $('quizScoreBadge').classList.add('hidden');
+        $('btnSubmitQuiz').classList.remove('hidden');
+        saveDraft();
+        renderQuiz();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast(`Bắt đầu Cụm ${idx + 1}/${totalChunks}`);
       } else if (act === 'pick-mcq') {
         state.answers[btn.dataset.qid] = btn.dataset.val;
         saveDraft();
@@ -1717,6 +1859,7 @@
         const draft = loadDraft(state.activeDeck.id);
         if (!draft || !Array.isArray(draft.quizQuestions)) return;
         state.quizQuestions = draft.quizQuestions;
+        state.chunkPool = Array.isArray(draft.chunkPool) && draft.chunkPool.length ? draft.chunkPool : draft.quizQuestions;
         state.answers = draft.answers || {};
         state.flags = draft.flags || {};
         state.shuffleEnabled = Boolean(draft.shuffleEnabled);
@@ -1752,6 +1895,14 @@
         renderQuiz();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (act === 'retry-wrong') {
+        const wrongQs = state.quizQuestions.filter(q => !isQuestionCorrect(q));
+        if (!wrongQs.length) return;
+        $('confirmRetryMsg').textContent = `Bạn có chắc chắn muốn tạo lượt làm lại chỉ gồm ${wrongQs.length} câu vừa trả lời sai không?`;
+        $('confirmRetryModal').showModal();
+      } else if (act === 'cancel-retry') {
+        $('confirmRetryModal').close();
+      } else if (act === 'confirm-retry') {
+        $('confirmRetryModal').close();
         const wrongQs = state.quizQuestions.filter(q => !isQuestionCorrect(q));
         if (!wrongQs.length) return;
         state.quizQuestions = wrongQs.map(q => state.shuffleEnabled ? cloneShuffledQuestion(q) : q);
@@ -1827,6 +1978,7 @@
         $('confirmSubmitModal').close();
         state.submitted = true;
         state.resultFilter = 'all';
+        state.completedChunks[state.chunkIndex] = true;
         if (state.activeDeck) clearDraft(state.activeDeck.id);
         const total = state.quizQuestions.length;
         const right = state.quizQuestions.filter(isQuestionCorrect).length;
@@ -1997,6 +2149,12 @@
         const did = e.target.id.slice('editGroup-'.length);
         const subSel = $(`editSubGroup-${did}`);
         if (subSel) subSel.innerHTML = buildSubGroupOptions(e.target.value, '');
+      }
+      else if (e.target.id === 'inpCustomChunk') {
+        const val = parseInt(e.target.value, 10);
+        state.chunkSize = (!Number.isNaN(val) && val > 0) ? val : 0;
+        state.chunkIndex = 0;
+        renderDetail();
       }
       else if (e.target.id === 'searchInput') {
         state.search = e.target.value;
