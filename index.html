@@ -198,7 +198,7 @@
 
     <!-- MÀN HÌNH 3: KHÔNG GIAN LÀM BÀI -->
     <section id="viewQuiz" class="hidden space-y-4 sm:space-y-5 max-w-4xl lg:max-w-6xl mx-auto">
-      <div id="quizStickyBar" class="card-box p-2.5 sm:p-4 sticky top-14 sm:top-16 z-20 bg-white/95 backdrop-blur-sm shadow-md space-y-2.5 transition-all duration-200">
+      <div id="quizStickyBar" class="card-box p-2.5 sm:p-4 sticky top-14 sm:top-16 z-20 bg-white/95 backdrop-blur-sm shadow-md space-y-2.5 will-change-transform">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0 flex-1">
             <button data-action="go-detail" class="btn-fx shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-700">
@@ -222,7 +222,7 @@
 
       <div class="lg:flex lg:items-start lg:gap-6">
         <div id="questionArea" class="flex-1 min-w-0 space-y-3.5 sm:space-y-4"></div>
-        <aside id="quizPaletteBox" class="hidden lg:block w-64 xl:w-72 shrink-0 sticky top-20 z-10 card-box p-4 space-y-3 max-h-[calc(100vh-6rem)] overflow-y-auto transition-all duration-200">
+        <aside id="quizPaletteBox" class="hidden lg:block w-64 xl:w-72 shrink-0 sticky top-20 z-10 card-box p-4 space-y-3 max-h-[calc(100vh-6rem)] overflow-y-auto transition-all duration-300 ease-out">
           <div class="flex items-center justify-between gap-2">
             <h3 class="text-sm font-bold text-slate-900">Danh sách câu hỏi</h3>
             <span id="quizPaletteCount" class="text-xs font-semibold text-slate-500"></span>
@@ -2647,25 +2647,30 @@
 
     let lastQuizScrollY = 0;
     let quizScrollAccum = 0;
-    let quizBarShown = true;
-    function setQuizBarVisible(visible) {
-      quizBarShown = visible;
+    let quizBarProgress = 1;
+    function applyQuizBarProgress(p, animate = false) {
+      const clamped = Math.max(0, Math.min(1, p));
+      quizBarProgress = clamped;
       const bar = $('quizStickyBar');
       const pal = $('quizPaletteBox');
       if (!bar) return;
-      if (visible) {
-        bar.classList.remove('-translate-y-full', 'opacity-0', 'pointer-events-none');
-        if (pal) {
+      bar.style.transition = animate ? 'transform 0.5s ease-out, opacity 0.5s ease-out' : 'none';
+      bar.style.transform = `translateY(${-((1 - clamped) * 105).toFixed(1)}%)`;
+      bar.style.opacity = clamped.toFixed(3);
+      bar.style.pointerEvents = clamped < 0.15 ? 'none' : '';
+      if (pal) {
+        if (clamped >= 0.5) {
           pal.classList.remove('top-20');
           pal.classList.add('top-44');
-        }
-      } else {
-        bar.classList.add('-translate-y-full', 'opacity-0', 'pointer-events-none');
-        if (pal) {
+        } else {
           pal.classList.remove('top-44');
           pal.classList.add('top-20');
         }
       }
+    }
+    function setQuizBarVisible(visible) {
+      quizScrollAccum = 0;
+      applyQuizBarProgress(visible ? 1 : 0, true);
     }
 
     window.addEventListener('scroll', () => {
@@ -2675,20 +2680,30 @@
       lastQuizScrollY = curY;
       if (curY <= 80) {
         quizScrollAccum = 0;
-        if (!quizBarShown) setQuizBarVisible(true);
+        if (quizBarProgress < 1) applyQuizBarProgress(1, true);
         return;
       }
       if ((delta > 0 && quizScrollAccum < 0) || (delta < 0 && quizScrollAccum > 0)) {
         quizScrollAccum = 0;
       }
       quizScrollAccum += delta;
-      const THRESHOLD = 180;
-      if (quizScrollAccum >= THRESHOLD && curY > 220) {
-        quizScrollAccum = 0;
-        if (quizBarShown) setQuizBarVisible(false);
-      } else if (quizScrollAccum <= -THRESHOLD) {
-        quizScrollAccum = 0;
-        if (!quizBarShown) setQuizBarVisible(true);
+      const DOWN_START = 180;
+      const UP_START = 360;
+      const FADE_SPAN = 260;
+
+      if (quizScrollAccum > 0 && curY > 220 && quizBarProgress > 0) {
+        if (quizScrollAccum >= DOWN_START) {
+          const p = 1 - (quizScrollAccum - DOWN_START) / FADE_SPAN;
+          applyQuizBarProgress(p, false);
+          if (p <= 0) quizScrollAccum = 0;
+        }
+      } else if (quizScrollAccum < 0 && quizBarProgress < 1) {
+        const upDist = -quizScrollAccum;
+        if (upDist >= UP_START) {
+          const p = (upDist - UP_START) / FADE_SPAN;
+          applyQuizBarProgress(p, false);
+          if (p >= 1) quizScrollAccum = 0;
+        }
       }
     }, { passive: true });
 
