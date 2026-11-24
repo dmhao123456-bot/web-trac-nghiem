@@ -2558,7 +2558,10 @@
     }
 
     let lastQuizScrollY = 0;
+    let quizScrollAccum = 0;
+    let quizBarShown = true;
     function setQuizBarVisible(visible) {
+      quizBarShown = visible;
       const bar = $('quizStickyBar');
       const pal = $('quizPaletteBox');
       if (!bar) return;
@@ -2580,12 +2583,25 @@
     window.addEventListener('scroll', () => {
       if (state.view !== 'quiz') return;
       const curY = window.scrollY || 0;
-      if (curY <= 80 || curY < lastQuizScrollY - 5) {
-        setQuizBarVisible(true);
-      } else if (curY > lastQuizScrollY + 10 && curY > 120) {
-        setQuizBarVisible(false);
-      }
+      const delta = curY - lastQuizScrollY;
       lastQuizScrollY = curY;
+      if (curY <= 80) {
+        quizScrollAccum = 0;
+        if (!quizBarShown) setQuizBarVisible(true);
+        return;
+      }
+      if ((delta > 0 && quizScrollAccum < 0) || (delta < 0 && quizScrollAccum > 0)) {
+        quizScrollAccum = 0;
+      }
+      quizScrollAccum += delta;
+      const THRESHOLD = 180;
+      if (quizScrollAccum >= THRESHOLD && curY > 220) {
+        quizScrollAccum = 0;
+        if (quizBarShown) setQuizBarVisible(false);
+      } else if (quizScrollAccum <= -THRESHOLD) {
+        quizScrollAccum = 0;
+        if (!quizBarShown) setQuizBarVisible(true);
+      }
     }, { passive: true });
 
     $('adminSyncDialog')?.addEventListener('cancel', e => { e.preventDefault(); });
