@@ -659,43 +659,81 @@
       if (dlg && dlg.open) dlg.close();
     }
 
-    async function autoLoadSheets() {
+    const LOBBY_CACHE_KEY = 'quiz_lobby_cache_v1';
+    function applyLobbyData(data) {
+      state.decks = [...data.decks].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+      const deckGroups = state.decks.map(d => d.group).filter(Boolean);
+      const apiGroups = Array.isArray(data.groups) ? data.groups : [];
+      state.groups = [...new Set([...apiGroups, ...deckGroups])];
+      state.groupPasswords = (data.groupPasswords && typeof data.groupPasswords === 'object') ? data.groupPasswords : {};
+      const apiSubs = (data.subGroups && typeof data.subGroups === 'object') ? data.subGroups : {};
+      state.subGroups = {};
+      state.groups.forEach(g => {
+        const fromApi = Array.isArray(apiSubs[g]) ? apiSubs[g] : [];
+        const fromDecks = state.decks.filter(d => d.group === g && d.subGroup).map(d => d.subGroup);
+        state.subGroups[g] = [...new Set([...fromApi, ...fromDecks])];
+      });
+      if (data.adminPassword) state.adminPassword = String(data.adminPassword);
+    }
+    function readLobbyCache() {
+      try {
+        const raw = localStorage.getItem(LOBBY_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return (parsed && Array.isArray(parsed.decks)) ? parsed : null;
+      } catch { return null; }
+    }
+    function writeLobbyCache(data) {
+      try {
+        localStorage.setItem(LOBBY_CACHE_KEY, JSON.stringify({
+          decks: data.decks || [],
+          groups: data.groups || [],
+          groupPasswords: data.groupPasswords || {},
+          subGroups: data.subGroups || {},
+          savedAt: Date.now()
+        }));
+      } catch {}
+    }
+
+    async function autoLoadSheets(silent = false) {
       if (!GAS_API_URL) {
         setBadge('empty', 'Chưa gắn link Script');
         renderLobby();
         return;
       }
-      state.loading = true;
+      const cachedLobby = !silent ? readLobbyCache() : null;
+      if (cachedLobby) {
+        applyLobbyData(cachedLobby);
+        saveStableSnapshot();
+        setBadge('loading', 'Đang cập nhật...');
+        if (state.view === 'lobby') renderLobby();
+      } else if (!silent) {
+        state.loading = true;
+        setBadge('loading', 'Đang tải về...');
+        setGlobalLoading(true, 'Đang tải dữ liệu về...');
+        renderLobby();
+      }
       $('btnRefresh').disabled = true;
-      setBadge('loading', 'Đang tải về...');
-      setGlobalLoading(true, 'Đang tải dữ liệu về...');
-      renderLobby();
       try {
         const res = await fetch(`${GAS_API_URL}?action=getDecks`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         if (Array.isArray(data?.decks)) {
-          state.decks = [...data.decks].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          const deckGroups = state.decks.map(d => d.group).filter(Boolean);
-          const apiGroups = Array.isArray(data.groups) ? data.groups : [];
-          state.groups = [...new Set([...apiGroups, ...deckGroups])];
-          state.groupPasswords = (data.groupPasswords && typeof data.groupPasswords === 'object') ? data.groupPasswords : {};
-          const apiSubs = (data.subGroups && typeof data.subGroups === 'object') ? data.subGroups : {};
-          state.subGroups = {};
-          state.groups.forEach(g => {
-            const fromApi = Array.isArray(apiSubs[g]) ? apiSubs[g] : [];
-            const fromDecks = state.decks.filter(d => d.group === g && d.subGroup).map(d => d.subGroup);
-            state.subGroups[g] = [...new Set([...fromApi, ...fromDecks])];
-          });
-          if (data.adminPassword) state.adminPassword = String(data.adminPassword);
+          applyLobbyData(data);
+          writeLobbyCache(data);
           setBadge('live', 'Đã đồng bộ tự động');
           saveStableSnapshot();
+          if (silent && $('manageModal')?.open) renderAdminModal();
         } else {
           throw new Error('Dữ liệu không hợp lệ');
         }
       } catch (err) {
-        setBadge('error', 'Lỗi tải dữ liệu');
-        showToast('Không thể tải dữ liệu từ Sheet Admin');
+        if (!cachedLobby && !silent) {
+          setBadge('error', 'Lỗi tải dữ liệu');
+          showToast('Không thể tải dữ liệu từ Sheet Admin');
+        } else if (cachedLobby) {
+          setBadge('live', 'Đang dùng bản lưu máy');
+        }
       } finally {
         state.loading = false;
         $('btnRefresh').disabled = false;
@@ -766,6 +804,7 @@
       }
     }
 
+    const QUESTION_TTL_MS = 6 * 60 * 60 * 1000;
     function getCacheKey(url) {
       return 'qcache_v5_' + encodeURIComponent(String(url || '').trim());
     }
@@ -775,17 +814,51 @@
       if (mcqs.length > 0 && mcqs.some(q => !q.options || Object.keys(q.options).length < 2)) return false;
       return true;
     }
-    function readQuestionCache(url) {
+    function openQuizCacheDB() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) return reject(new Error('No IDB'));
+        const req = indexedDB.open('QuizCacheDB', 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('sheets')) db.createObjectStore('sheets', { keyPath: 'url' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function idbGetQuestionCache(url) {
+      const key = getCacheKey(url);
       try {
-        const raw = sessionStorage.getItem(getCacheKey(url));
+        const db = await openQuizCacheDB();
+        const rec = await new Promise((resolve, reject) => {
+          const tx = db.transaction('sheets', 'readonly');
+          const req = tx.objectStore('sheets').get(key);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+        if (rec && isQuestionListValid(rec.questions)) return rec;
+      } catch {}
+      try {
+        const raw = sessionStorage.getItem(key);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        return isQuestionListValid(parsed) ? parsed : null;
+        return isQuestionListValid(parsed) ? { questions: parsed, savedAt: 0 } : null;
       } catch { return null; }
     }
-    function writeQuestionCache(url, qs) {
+    async function idbSetQuestionCache(url, qs) {
       if (!isQuestionListValid(qs)) return;
-      try { sessionStorage.setItem(getCacheKey(url), JSON.stringify(qs)); } catch {}
+      const key = getCacheKey(url);
+      try {
+        const db = await openQuizCacheDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('sheets', 'readwrite');
+          tx.objectStore('sheets').put({ url: key, questions: qs, savedAt: Date.now() });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch {
+        try { sessionStorage.setItem(key, JSON.stringify(qs)); } catch {}
+      }
     }
 
     function getDraftKey(deckId) { return 'quiz_draft_' + deckId; }
@@ -937,9 +1010,17 @@
       if (!deck.sheetUrl) return deck;
       if (!forceRefresh) {
         if (isQuestionListValid(deck.questions)) return deck;
-        const cached = readQuestionCache(deck.sheetUrl);
-        if (cached && cached.length) {
-          deck.questions = cached;
+        const cached = await idbGetQuestionCache(deck.sheetUrl);
+        if (cached && isQuestionListValid(cached.questions)) {
+          deck.questions = cached.questions;
+          if (!deck.locked && (Date.now() - (cached.savedAt || 0) > QUESTION_TTL_MS)) {
+            fetchDirectFromSheet(deck.sheetUrl).then(fresh => {
+              if (isQuestionListValid(fresh)) {
+                deck.questions = fresh;
+                idbSetQuestionCache(deck.sheetUrl, fresh);
+              }
+            }).catch(() => {});
+          }
           return deck;
         }
       }
@@ -962,12 +1043,13 @@
               else if (t.includes('TRẮC') || t.includes('TRAC') || t === 'MCQ' || !t) normType = 'MCQ';
               return { ...q, type: normType };
             });
-          }
-          else if (data?.error) showToast(data.error);
+          } else if (data?.error) showToast(data.error);
         }
-        if (Array.isArray(loaded) && loaded.length) {
+        if (isQuestionListValid(loaded)) {
           deck.questions = loaded;
-          writeQuestionCache(deck.sheetUrl, loaded);
+          await idbSetQuestionCache(deck.sheetUrl, loaded);
+        } else if (Array.isArray(loaded) && loaded.length) {
+          showToast('Dữ liệu đáp án từ Sheet chưa hợp lệ, vui lòng kiểm tra lại');
         }
       } catch (err) {
         showToast('Lỗi tải câu hỏi từ Sheet bài tập');
@@ -1790,6 +1872,7 @@
           state.editingDeckId = null;
           renderAdminModal();
           $('manageModal').showModal();
+          autoLoadSheets(true);
         } else {
           $('inpAdminPass').value = '';
           $('adminLoginModal').showModal();
@@ -2172,14 +2255,19 @@
         resBox.textContent = 'Đang kết nối Google Sheet...';
         resBox.classList.remove('hidden');
         try {
-          const data = await callGas({ action: 'getQuestions', sheetUrl: url });
-          if (Array.isArray(data?.questions)) {
-            const qs = data.questions;
-            const mcq = qs.filter(q => q.type === 'MCQ').length;
-            const tf = qs.filter(q => q.type === 'TF').length;
-            const sh = qs.filter(q => q.type === 'SHORT').length;
+          const [gasRes, directRes] = await Promise.allSettled([
+            callGas({ action: 'getQuestions', sheetUrl: url }),
+            fetchDirectFromSheet(url)
+          ]);
+          const data = gasRes.status === 'fulfilled' ? gasRes.value : null;
+          const directOk = directRes.status === 'fulfilled' && isQuestionListValid(directRes.value);
+          const qs = Array.isArray(data?.questions) ? data.questions : (directOk ? directRes.value : null);
+          if (Array.isArray(qs)) {
+            const mcq = qs.filter(q => q.type === 'MCQ' || String(q.type || '').toLowerCase().includes('trắc')).length;
+            const tf = qs.filter(q => q.type === 'TF' || String(q.type || '').toLowerCase().includes('đúng')).length;
+            const sh = qs.filter(q => q.type === 'SHORT' || String(q.type || '').toLowerCase().includes('ngắn')).length;
             resBox.className = 'mt-2 text-xs rounded-lg px-3 py-2 border bg-emerald-50 border-emerald-200 text-emerald-800';
-            resBox.textContent = `✓ Hợp lệ: Tổng ${qs.length} câu (Trắc nghiệm: ${mcq}, Đúng/Sai: ${tf}, Trả lời ngắn: ${sh}).`;
+            resBox.textContent = `✓ Hợp lệ: Tổng ${qs.length} câu (TN: ${mcq}, Đ/S: ${tf}, Ngắn: ${sh}) • ${directOk ? '⚡ Tải nhanh trực tiếp OK' : '⚠ Chưa bật chia sẻ công khai (sẽ tải qua Script)'}.`;
           } else {
             throw new Error(data?.error || 'Không đọc được câu hỏi từ Sheet này');
           }
