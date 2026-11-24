@@ -766,17 +766,24 @@
     }
 
     function getCacheKey(url) {
-      return 'qcache_' + encodeURIComponent(String(url || '').trim());
+      return 'qcache_v4_' + encodeURIComponent(String(url || '').trim());
+    }
+    function isQuestionListValid(qs) {
+      if (!Array.isArray(qs) || !qs.length) return false;
+      const mcqs = qs.filter(q => q && q.type === 'MCQ');
+      if (mcqs.length > 0 && mcqs.some(q => !q.options || Object.keys(q.options).length < 2)) return false;
+      return true;
     }
     function readQuestionCache(url) {
       try {
         const raw = sessionStorage.getItem(getCacheKey(url));
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : null;
+        return isQuestionListValid(parsed) ? parsed : null;
       } catch { return null; }
     }
     function writeQuestionCache(url, qs) {
+      if (!isQuestionListValid(qs)) return;
       try { sessionStorage.setItem(getCacheKey(url), JSON.stringify(qs)); } catch {}
     }
 
@@ -784,7 +791,13 @@
     function loadDraft(deckId) {
       try {
         const raw = localStorage.getItem(getDraftKey(deckId));
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !isQuestionListValid(parsed.quizQuestions)) {
+          localStorage.removeItem(getDraftKey(deckId));
+          return null;
+        }
+        return parsed;
       } catch { return null; }
     }
     function saveDraft() {
@@ -804,32 +817,65 @@
       try { localStorage.removeItem(getDraftKey(deckId)); } catch {}
     }
 
-    function parseGvizQuestions(gvizText) {
-      const firstBrace = gvizText.indexOf('{');
-      const lastBrace = gvizText.lastIndexOf('}');
-      if (firstBrace === -1 || lastBrace <= firstBrace) throw new Error('GViz format error');
-      const parsed = JSON.parse(gvizText.slice(firstBrace, lastBrace + 1));
-      if (parsed.status !== 'ok' || !parsed.table || !Array.isArray(parsed.table.rows)) {
-        throw new Error('GViz status not ok');
-      }
-      const cols = (parsed.table.cols || []).map(c => String(c.label || '').trim().toLowerCase());
-      let rows = parsed.table.rows.map(r => (r.c || []).map(cell => (cell && cell.v !== null && cell.v !== undefined) ? String(cell.v) : ''));
-      let headerIdx = {};
-      if (cols.includes('cau_hoi') || cols.includes('phan')) {
-        cols.forEach((name, i) => { if (name) headerIdx[name] = i; });
-      } else if (rows.length > 0) {
-        const firstRow = rows[0].map(v => v.trim().toLowerCase());
-        if (firstRow.includes('cau_hoi') || firstRow.includes('phan')) {
-          firstRow.forEach((name, i) => { if (name) headerIdx[name] = i; });
-          rows = rows.slice(1);
+    function parseCsvRows(text) {
+      const rows = [];
+      let row = [];
+      let field = '';
+      let inQuotes = false;
+      const s = String(text || '').replace(/^\uFEFF/, '');
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (s[i + 1] === '"') { field += '"'; i++; }
+            else { inQuotes = false; }
+          } else {
+            field += ch;
+          }
+        } else {
+          if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === ',') {
+            row.push(field);
+            field = '';
+          } else if (ch === '\r') {
+            if (s[i + 1] === '\n') i++;
+            row.push(field);
+            rows.push(row);
+            row = [];
+            field = '';
+          } else if (ch === '\n') {
+            row.push(field);
+            rows.push(row);
+            row = [];
+            field = '';
+          } else {
+            field += ch;
+          }
         }
+      }
+      if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function parseSheetCsvQuestions(csvText) {
+      let rows = parseCsvRows(csvText);
+      if (!rows.length) throw new Error('Empty CSV');
+      let headerIdx = {};
+      const firstRow = rows[0].map(v => String(v || '').trim().toLowerCase());
+      if (firstRow.includes('cau_hoi') || firstRow.includes('phan')) {
+        firstRow.forEach((name, i) => { if (name) headerIdx[name] = i; });
+        rows = rows.slice(1);
       }
       const getVal = (row, key, fallbackIdx) => {
         const idx = headerIdx[key] !== undefined ? headerIdx[key] : fallbackIdx;
         return (row[idx] !== undefined && row[idx] !== null) ? String(row[idx]).trim() : '';
       };
       const out = [];
-      rows.forEach((row, i) => {
+      rows.forEach(row => {
         const text = getVal(row, 'cau_hoi', 2);
         if (!text) return;
         const part = getVal(row, 'phan', 0) || 'Chung';
@@ -866,6 +912,9 @@
           out.push({ id, part, type: 'MCQ', text, options, answer: ansRaw.toUpperCase(), explain, img });
         }
       });
+      const mcqCount = out.filter(q => q.type === 'MCQ').length;
+      const validMcq = out.filter(q => q.type === 'MCQ' && Object.keys(q.options || {}).length >= 2).length;
+      if (mcqCount > 0 && validMcq === 0) throw new Error('Invalid MCQ options in CSV');
       return out;
     }
 
@@ -873,11 +922,12 @@
       const mId = String(sheetUrl || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
       if (!mId) throw new Error('Invalid sheet URL');
       const mGid = String(sheetUrl || '').match(/gid=(\d+)/);
-      const gvizUrl = `https://docs.google.com/spreadsheets/d/${mId[1]}/gviz/tq?tqx=out:json${mGid ? '&gid=' + mGid[1] : ''}`;
-      const res = await fetch(gvizUrl);
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${mId[1]}/gviz/tq?tqx=out:csv&headers=1${mGid ? '&gid=' + mGid[1] : ''}`;
+      const res = await fetch(csvUrl);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const txt = await res.text();
-      const questions = parseGvizQuestions(txt);
+      if (txt.trim().startsWith('<')) throw new Error('HTML response');
+      const questions = parseSheetCsvQuestions(txt);
       if (!questions.length) throw new Error('Empty sheet');
       return questions;
     }
@@ -885,7 +935,7 @@
     async function loadDeckQuestions(deck, forceRefresh = false) {
       if (!deck.sheetUrl) return deck;
       if (!forceRefresh) {
-        if (Array.isArray(deck.questions) && deck.questions.length) return deck;
+        if (isQuestionListValid(deck.questions)) return deck;
         const cached = readQuestionCache(deck.sheetUrl);
         if (cached && cached.length) {
           deck.questions = cached;
