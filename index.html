@@ -1400,7 +1400,8 @@
       });
 
       const pageSize = state.pageSize || 40;
-      const totalPages = filteredEntries.length > pageSize ? Math.ceil(filteredEntries.length / pageSize) : 1;
+      const usePagination = !(state.chunkSize > 0) && filteredEntries.length > pageSize;
+      const totalPages = usePagination ? Math.ceil(filteredEntries.length / pageSize) : 1;
       if (state.quizPage >= totalPages) state.quizPage = Math.max(0, totalPages - 1);
       if (state.quizPage < 0) state.quizPage = 0;
       const pageStart = state.quizPage * pageSize;
@@ -2063,13 +2064,15 @@
         if (!card) {
           if (state.submitted) state.resultFilter = 'all';
           else state.quizFilter = 'all';
-          const list = getActiveQuestionList();
+          const list = state.quizQuestions || [];
           const pos = list.findIndex(q => q.id === qid);
-          if (pos >= 0) state.quizPage = Math.floor(pos / (state.pageSize || 40));
+          if (pos >= 0) {
+            state.quizPage = (state.chunkSize > 0) ? 0 : Math.floor(pos / (state.pageSize || 40));
+          }
           renderQuiz();
           card = document.getElementById('qcard-' + qid);
         }
-        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (card) requestAnimationFrame(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       } else if (act === 'quiz-page') {
         const p = Number(btn.dataset.page);
         if (!Number.isNaN(p) && p >= 0) {
