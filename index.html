@@ -506,6 +506,7 @@
       chunkIndex: 0,
       chunkPool: [],
       completedChunks: {},
+      retryMode: 'wrong',
       mobileChunkMenuOpen: false,
       quizQuestions: [],
       answers: {},
@@ -1370,7 +1371,7 @@
         filterBar.innerHTML = tabs.map(t => {
           const active = state.resultFilter === t.key;
           return `<button data-action="filter-result" data-filter="${t.key}" class="btn-fx px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">${t.label}</button>`;
-        }).join('') + (wrongCount > 0 ? `<button data-action="retry-wrong" class="btn-fx px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm">↺ Làm lại ${wrongCount} câu sai</button>` : '') + (totalChunks > 1 ? `<button type="button" data-action="toggle-mobile-chunk-menu" class="md:hidden btn-fx px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${state.mobileChunkMenuOpen ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-800 border-amber-200'}">📦 Cụm ${state.chunkIndex + 1}/${totalChunks} ${state.mobileChunkMenuOpen ? '▴' : '▾'}</button>` : '');
+        }).join('') + (wrongCount > 0 ? `<button data-action="retry-wrong" class="btn-fx px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm">↺ Làm lại ${wrongCount} câu sai</button>` : '') + (totalChunks > 1 ? `<button type="button" data-action="retry-chunk" class="btn-fx px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white shadow-sm">↺ Làm lại cụm này</button>` : '') + (totalChunks > 1 ? `<button type="button" data-action="toggle-mobile-chunk-menu" class="md:hidden btn-fx px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${state.mobileChunkMenuOpen ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-800 border-amber-200'}">📦 Cụm ${state.chunkIndex + 1}/${totalChunks} ${state.mobileChunkMenuOpen ? '▴' : '▾'}</button>` : '');
         filterBar.classList.remove('hidden');
       } else {
         const unansweredCount = list.filter(q => !isQuestionAnswered(q)).length;
@@ -2006,18 +2007,34 @@
         if (idx < 0 || idx >= totalChunks) return;
         state.chunkIndex = idx;
         state.mobileChunkMenuOpen = false;
-        state.quizQuestions = getChunkedQuestions(state.chunkPool);
-        state.answers = {};
-        state.flags = {};
-        state.quizFilter = 'all';
-        state.submitted = false;
-        state.resultFilter = 'all';
-        $('quizScoreBadge').classList.add('hidden');
-        $('btnSubmitQuiz').classList.remove('hidden');
-        saveDraft();
-        renderQuiz();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        showToast(`Bắt đầu Cụm ${idx + 1}/${totalChunks}`);
+        state.quizPage = 0;
+        const saved = state.completedChunks[idx];
+        if (saved && typeof saved === 'object' && Array.isArray(saved.quizQuestions)) {
+          state.quizQuestions = saved.quizQuestions;
+          state.answers = { ...(saved.answers || {}) };
+          state.flags = { ...(saved.flags || {}) };
+          state.submitted = true;
+          state.resultFilter = 'all';
+          $('btnSubmitQuiz').classList.add('hidden');
+          $('quizScoreBadge').textContent = `Đúng ${saved.right}/${saved.total} câu (${saved.pct}%)`;
+          $('quizScoreBadge').classList.remove('hidden');
+          renderQuiz();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast(`Xem lại Cụm ${idx + 1}/${totalChunks} (đã nộp)`);
+        } else {
+          state.quizQuestions = getChunkedQuestions(state.chunkPool);
+          state.answers = {};
+          state.flags = {};
+          state.quizFilter = 'all';
+          state.submitted = false;
+          state.resultFilter = 'all';
+          $('quizScoreBadge').classList.add('hidden');
+          $('btnSubmitQuiz').classList.remove('hidden');
+          saveDraft();
+          renderQuiz();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast(`Bắt đầu Cụm ${idx + 1}/${totalChunks}`);
+        }
       } else if (act === 'pick-mcq') {
         state.answers[btn.dataset.qid] = btn.dataset.val;
         saveDraft();
@@ -2088,12 +2105,34 @@
       } else if (act === 'retry-wrong') {
         const wrongQs = state.quizQuestions.filter(q => !isQuestionCorrect(q));
         if (!wrongQs.length) return;
+        state.retryMode = 'wrong';
         $('confirmRetryMsg').textContent = `Bạn có chắc chắn muốn tạo lượt làm lại chỉ gồm ${wrongQs.length} câu vừa trả lời sai không?`;
+        $('confirmRetryModal').showModal();
+      } else if (act === 'retry-chunk') {
+        state.retryMode = 'chunk';
+        $('confirmRetryMsg').textContent = `Bạn có chắc chắn muốn làm lại toàn bộ Cụm ${state.chunkIndex + 1} từ đầu không?`;
         $('confirmRetryModal').showModal();
       } else if (act === 'cancel-retry') {
         $('confirmRetryModal').close();
       } else if (act === 'confirm-retry') {
         $('confirmRetryModal').close();
+        if (state.retryMode === 'chunk') {
+          delete state.completedChunks[state.chunkIndex];
+          state.quizQuestions = getChunkedQuestions(state.chunkPool);
+          state.answers = {};
+          state.flags = {};
+          state.quizFilter = 'all';
+          state.submitted = false;
+          state.resultFilter = 'all';
+          state.quizPage = 0;
+          $('quizScoreBadge').classList.add('hidden');
+          $('btnSubmitQuiz').classList.remove('hidden');
+          saveDraft();
+          renderQuiz();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast(`Bắt đầu làm lại Cụm ${state.chunkIndex + 1}`);
+          return;
+        }
         const wrongQs = state.quizQuestions.filter(q => !isQuestionCorrect(q));
         if (!wrongQs.length) return;
         state.quizQuestions = wrongQs.map(q => state.shuffleEnabled ? cloneShuffledQuestion(q) : q);
@@ -2173,11 +2212,18 @@
         $('confirmSubmitModal').close();
         state.submitted = true;
         state.resultFilter = 'all';
-        state.completedChunks[state.chunkIndex] = true;
         if (state.activeDeck) clearDraft(state.activeDeck.id);
         const total = state.quizQuestions.length;
         const right = state.quizQuestions.filter(isQuestionCorrect).length;
         const pct = total ? Math.round((right / total) * 100) : 0;
+        state.completedChunks[state.chunkIndex] = {
+          quizQuestions: state.quizQuestions,
+          answers: { ...state.answers },
+          flags: { ...state.flags },
+          right,
+          total,
+          pct
+        };
         $('btnSubmitQuiz').classList.add('hidden');
         $('quizScoreBadge').textContent = `Đúng ${right}/${total} câu (${pct}%)`;
         $('quizScoreBadge').classList.remove('hidden');
