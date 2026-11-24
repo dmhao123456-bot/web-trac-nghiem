@@ -792,6 +792,13 @@
       return deck;
     }
 
+    const renderParagraphs = s => String(s || '')
+      .split(/\n+/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => `<p>${chemHtml(line)}</p>`)
+      .join('');
+
     function renderMath(el) {
       if (window.renderMathInElement) {
         renderMathInElement(el, {
@@ -1206,7 +1213,7 @@
               <span class="text-xs text-slate-400 font-medium">${esc(TYPE_LABELS[q.type] || q.type)}</span>
             </div>
           </div>
-          <p class="text-sm sm:text-base lg:text-[18px] text-slate-800 leading-relaxed whitespace-pre-line break-words">${chemHtml(q.text)}</p>
+          <div class="space-y-2.5 text-sm sm:text-base lg:text-[18px] text-slate-800 leading-relaxed break-words">${renderParagraphs(q.text)}</div>
           ${imgHtml}
           ${bodyHtml}
           ${explainHtml}
