@@ -766,7 +766,7 @@
     }
 
     function getCacheKey(url) {
-      return 'qcache_v4_' + encodeURIComponent(String(url || '').trim());
+      return 'qcache_v5_' + encodeURIComponent(String(url || '').trim());
     }
     function isQuestionListValid(qs) {
       if (!Array.isArray(qs) || !qs.length) return false;
@@ -952,7 +952,16 @@
         }
         if (!loaded && GAS_API_URL) {
           const data = await callGas({ action: 'getQuestions', sheetUrl: deck.sheetUrl });
-          if (Array.isArray(data?.questions)) loaded = data.questions;
+          if (Array.isArray(data?.questions)) {
+            loaded = data.questions.map(q => {
+              const t = String(q?.type || '').trim().toUpperCase();
+              let normType = t;
+              if (t.includes('ĐÚNG') || t.includes('DUNG') || t === 'TF') normType = 'TF';
+              else if (t.includes('NGẮN') || t.includes('NGAN') || t === 'SHORT') normType = 'SHORT';
+              else if (t.includes('TRẮC') || t.includes('TRAC') || t === 'MCQ' || !t) normType = 'MCQ';
+              return { ...q, type: normType };
+            });
+          }
           else if (data?.error) showToast(data.error);
         }
         if (Array.isArray(loaded) && loaded.length) {
