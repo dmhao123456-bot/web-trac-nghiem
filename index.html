@@ -501,7 +501,7 @@
       selectedParts: [],
       shuffleEnabled: false,
       chunkSize: 0,
-      quizPage: 0,
+      tabPages: {},
       pageSize: 40,
       chunkIndex: 0,
       chunkPool: [],
@@ -1089,6 +1089,22 @@
       return uText !== '' && uText === normalizeText(correctVal);
     }
 
+    function getCurrentQuizPage() {
+      const key = state.submitted ? ('res_' + state.resultFilter) : ('quiz_' + state.quizFilter);
+      return state.tabPages[key] || 0;
+    }
+    function setCurrentQuizPage(p) {
+      const key = state.submitted ? ('res_' + state.resultFilter) : ('quiz_' + state.quizFilter);
+      state.tabPages[key] = Math.max(0, Number(p) || 0);
+    }
+    function isQuestionFullyAnswered(q) {
+      const ans = state.answers[q.id];
+      if (q.type === 'TF') {
+        const items = q.items || [];
+        return items.length > 0 && items.every(it => Boolean((ans || {})[it.key]));
+      }
+      return Boolean(ans && String(ans).trim());
+    }
     function isQuestionAnswered(q) {
       const ans = state.answers[q.id];
       return q.type === 'TF' ? Boolean(ans && Object.keys(ans).length > 0) : Boolean(ans && String(ans).trim());
@@ -1456,7 +1472,7 @@
         }).join('') + (wrongCount > 0 ? `<button data-action="retry-wrong" class="btn-fx px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm">↺ Làm lại ${wrongCount} câu sai</button>` : '') + (totalChunks > 1 ? `<button type="button" data-action="retry-chunk" class="btn-fx px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white shadow-sm">↺ Làm lại cụm này</button>` : '') + (totalChunks > 1 ? `<button type="button" data-action="toggle-mobile-chunk-menu" class="md:hidden btn-fx px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${state.mobileChunkMenuOpen ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-800 border-amber-200'}">📦 Cụm ${state.chunkIndex + 1}/${totalChunks} ${state.mobileChunkMenuOpen ? '▴' : '▾'}</button>` : '');
         filterBar.classList.remove('hidden');
       } else {
-        const unansweredCount = list.filter(q => !isQuestionAnswered(q)).length;
+        const unansweredCount = list.filter(q => !isQuestionFullyAnswered(q)).length;
         const flaggedCount = list.filter(q => Boolean(state.flags[q.id])).length;
         const qTabs = [
           { key: 'all', label: `Tất cả (${list.length})` },
@@ -1476,7 +1492,7 @@
           if (state.resultFilter === 'correct' && !ok) return false;
           if (state.resultFilter === 'wrong' && ok) return false;
         } else {
-          if (state.quizFilter === 'unanswered' && isQuestionAnswered(q)) return false;
+          if (state.quizFilter === 'unanswered' && isQuestionFullyAnswered(q)) return false;
           if (state.quizFilter === 'flagged' && !state.flags[q.id]) return false;
         }
         return true;
@@ -1485,9 +1501,11 @@
       const pageSize = state.pageSize || 40;
       const usePagination = !(state.chunkSize > 0) && filteredEntries.length > pageSize;
       const totalPages = usePagination ? Math.ceil(filteredEntries.length / pageSize) : 1;
-      if (state.quizPage >= totalPages) state.quizPage = Math.max(0, totalPages - 1);
-      if (state.quizPage < 0) state.quizPage = 0;
-      const pageStart = state.quizPage * pageSize;
+      let curPage = getCurrentQuizPage();
+      if (curPage >= totalPages) curPage = Math.max(0, totalPages - 1);
+      if (curPage < 0) curPage = 0;
+      setCurrentQuizPage(curPage);
+      const pageStart = curPage * pageSize;
       const visibleEntries = totalPages > 1 ? filteredEntries.slice(pageStart, pageStart + pageSize) : filteredEntries;
 
       const buildPageBar = () => {
@@ -1495,10 +1513,10 @@
         const fromN = pageStart + 1;
         const toN = Math.min(pageStart + pageSize, filteredEntries.length);
         return `<div class="card-box px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 bg-slate-50/80">
-          <span class="text-xs sm:text-sm font-semibold text-slate-600">Trang ${state.quizPage + 1}/${totalPages} <span class="font-normal text-slate-500">(Hiển thị ${fromN}–${toN} / ${filteredEntries.length} câu)</span></span>
+          <span class="text-xs sm:text-sm font-semibold text-slate-600">Trang ${curPage + 1}/${totalPages} <span class="font-normal text-slate-500">(Hiển thị ${fromN}–${toN} / ${filteredEntries.length} câu)</span></span>
           <div class="flex items-center gap-1.5">
-            <button type="button" data-action="quiz-page" data-page="${state.quizPage - 1}" ${state.quizPage === 0 ? 'disabled' : ''} class="btn-fx px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40">‹ Trước</button>
-            <button type="button" data-action="quiz-page" data-page="${state.quizPage + 1}" ${state.quizPage >= totalPages - 1 ? 'disabled' : ''} class="btn-fx px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40">Sau ›</button>
+            <button type="button" data-action="quiz-page" data-page="${curPage - 1}" ${curPage === 0 ? 'disabled' : ''} class="btn-fx px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40">‹ Trước</button>
+            <button type="button" data-action="quiz-page" data-page="${curPage + 1}" ${curPage >= totalPages - 1 ? 'disabled' : ''} class="btn-fx px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-40">Sau ›</button>
           </div>
         </div>`;
       };
@@ -1568,7 +1586,7 @@
               <span class="text-xs lg:text-sm text-indigo-600 font-medium truncate">${esc(cleanPartName(q.part))}</span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              ${!state.submitted ? `<button data-action="toggle-flag" data-qid="${esc(q.id)}" class="btn-fx px-2 py-0.5 rounded-md text-[11px] font-semibold border ${state.flags[q.id] ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}">${state.flags[q.id] ? '🚩 Đã đánh dấu' : '⚑ Xem lại'}</button>` : ''}
+              ${!state.submitted ? `<button data-action="toggle-flag" data-qid="${esc(q.id)}" class="btn-fx px-2 py-0.5 rounded-md text-[11px] font-semibold border ${state.flags[q.id] ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}">${state.flags[q.id] ? '🚩 Đã đánh dấu' : '⚑ Xem lại'}</button>` : (!isQuestionAnswered(q) ? `<span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold">Chưa làm</span>` : (!isQuestionFullyAnswered(q) ? `<span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold">Làm thiếu ý</span>` : ''))}
               <span class="text-xs text-slate-400 font-medium">${esc(TYPE_LABELS[q.type] || q.type)}</span>
             </div>
           </div>
@@ -2073,6 +2091,7 @@
         if (!allMatched.length) return;
         state.chunkPool = prepareQuizQuestions(allMatched, state.shuffleEnabled);
         state.completedChunks = {};
+        state.tabPages = {};
         state.quizQuestions = getChunkedQuestions(state.chunkPool);
         state.answers = {};
         state.flags = {};
@@ -2090,7 +2109,7 @@
         if (idx < 0 || idx >= totalChunks) return;
         state.chunkIndex = idx;
         state.mobileChunkMenuOpen = false;
-        state.quizPage = 0;
+        state.tabPages = {};
         const saved = state.completedChunks[idx];
         if (saved && typeof saved === 'object' && Array.isArray(saved.quizQuestions)) {
           state.quizQuestions = saved.quizQuestions;
@@ -2167,7 +2186,7 @@
           const list = state.quizQuestions || [];
           const pos = list.findIndex(q => q.id === qid);
           if (pos >= 0) {
-            state.quizPage = (state.chunkSize > 0) ? 0 : Math.floor(pos / (state.pageSize || 40));
+            setCurrentQuizPage((state.chunkSize > 0) ? 0 : Math.floor(pos / (state.pageSize || 40)));
           }
           renderQuiz();
           card = document.getElementById('qcard-' + qid);
@@ -2176,13 +2195,12 @@
       } else if (act === 'quiz-page') {
         const p = Number(btn.dataset.page);
         if (!Number.isNaN(p) && p >= 0) {
-          state.quizPage = p;
+          setCurrentQuizPage(p);
           renderQuiz();
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       } else if (act === 'filter-quiz') {
         state.quizFilter = btn.dataset.filter;
-        state.quizPage = 0;
         renderQuiz();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (act === 'retry-wrong') {
@@ -2207,7 +2225,7 @@
           state.quizFilter = 'all';
           state.submitted = false;
           state.resultFilter = 'all';
-          state.quizPage = 0;
+          state.tabPages = {};
           $('quizScoreBadge').classList.add('hidden');
           $('btnSubmitQuiz').classList.remove('hidden');
           saveDraft();
@@ -2283,7 +2301,6 @@
         renderQuiz();
       } else if (act === 'filter-result') {
         state.resultFilter = btn.dataset.filter;
-        state.quizPage = 0;
         renderQuiz();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (act === 'ask-submit') {
