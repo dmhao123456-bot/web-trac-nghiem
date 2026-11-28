@@ -521,6 +521,7 @@
       activeSubGroup: null,
       groups: [],
       groupPasswords: {},
+      lockedGroups: {},
       subGroups: {},
       pendingUnlockGroup: null,
       editingPassGroup: null,
@@ -555,7 +556,7 @@
       adminTab: 'create',
       editingDeckId: null,
       theme: localStorage.getItem('quiz_theme') || 'light',
-      adminPassword: localStorage.getItem('quiz_admin_pw') || 'admin123'
+      adminPassword: ''
     };
 
     function shuffleArr(arr) {
@@ -651,7 +652,7 @@
         state.lastStableSnapshot = JSON.stringify({
           decks: state.decks,
           groups: state.groups,
-          groupPasswords: state.groupPasswords,
+          lockedGroups: state.lockedGroups,
           subGroups: state.subGroups,
           activeGroup: state.activeGroup,
           activeSubGroup: state.activeSubGroup
@@ -665,7 +666,7 @@
         const snap = JSON.parse(state.lastStableSnapshot);
         state.decks = snap.decks || [];
         state.groups = snap.groups || [];
-        state.groupPasswords = snap.groupPasswords || {};
+        state.lockedGroups = snap.lockedGroups || {};
         state.subGroups = snap.subGroups || {};
         state.activeGroup = snap.activeGroup || 'Tất cả';
         state.activeSubGroup = snap.activeSubGroup || null;
@@ -688,13 +689,23 @@
       if (dlg && dlg.open) dlg.close();
     }
 
-    const LOBBY_CACHE_KEY = 'quiz_lobby_cache_v1';
+    const LOBBY_CACHE_KEY = 'quiz_lobby_cache_v2';
+    try { localStorage.removeItem('quiz_admin_pw'); localStorage.removeItem('quiz_lobby_cache_v1'); } catch {}
     function applyLobbyData(data) {
       state.decks = [...data.decks].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
       const deckGroups = state.decks.map(d => d.group).filter(Boolean);
       const apiGroups = Array.isArray(data.groups) ? data.groups : [];
       state.groups = [...new Set([...apiGroups, ...deckGroups])];
-      state.groupPasswords = (data.groupPasswords && typeof data.groupPasswords === 'object') ? data.groupPasswords : {};
+      if (data.lockedGroups && typeof data.lockedGroups === 'object') {
+        state.lockedGroups = data.lockedGroups;
+      } else if (data.groupPasswords && typeof data.groupPasswords === 'object') {
+        const lg = {};
+        Object.keys(data.groupPasswords).forEach(k => { if (data.groupPasswords[k]) lg[k] = true; });
+        state.lockedGroups = lg;
+      }
+      if (state.isAdmin && data.groupPasswords && typeof data.groupPasswords === 'object') {
+        state.groupPasswords = data.groupPasswords;
+      }
       const apiSubs = (data.subGroups && typeof data.subGroups === 'object') ? data.subGroups : {};
       state.subGroups = {};
       state.groups.forEach(g => {
@@ -702,7 +713,6 @@
         const fromDecks = state.decks.filter(d => d.group === g && d.subGroup).map(d => d.subGroup);
         state.subGroups[g] = [...new Set([...fromApi, ...fromDecks])];
       });
-      if (data.adminPassword) state.adminPassword = String(data.adminPassword);
     }
     function readLobbyCache() {
       try {
@@ -717,7 +727,7 @@
         localStorage.setItem(LOBBY_CACHE_KEY, JSON.stringify({
           decks: data.decks || [],
           groups: data.groups || [],
-          groupPasswords: data.groupPasswords || {},
+          lockedGroups: state.lockedGroups || {},
           subGroups: data.subGroups || {},
           savedAt: Date.now()
         }));
@@ -744,9 +754,14 @@
       }
       $('btnRefresh').disabled = true;
       try {
-        const res = await fetch(`${GAS_API_URL}?action=getDecks`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+        let data;
+        if (silent && state.isAdmin && state.adminPassword) {
+          data = await callGas({ action: 'verifyAdmin', password: state.adminPassword });
+        } else {
+          const res = await fetch(`${GAS_API_URL}?action=getDecks`);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          data = await res.json();
+        }
         if (Array.isArray(data?.decks)) {
           applyLobbyData(data);
           writeLobbyCache(data);
@@ -1036,17 +1051,19 @@
     }
 
     async function loadDeckQuestions(deck, forceRefresh = false) {
-      if (!deck.sheetUrl) return deck;
+      const cacheUrl = deck.sheetUrl || ('deck_' + deck.id);
+      const isLockedDeck = Boolean(deck.locked || (deck.group && isGroupLocked(deck.group)));
+      if (!deck.sheetUrl && !isLockedDeck) return deck;
       if (!forceRefresh) {
         if (isQuestionListValid(deck.questions)) return deck;
-        const cached = await idbGetQuestionCache(deck.sheetUrl);
+        const cached = await idbGetQuestionCache(cacheUrl);
         if (cached && isQuestionListValid(cached.questions)) {
           deck.questions = cached.questions;
-          if (!deck.locked && (Date.now() - (cached.savedAt || 0) > QUESTION_TTL_MS)) {
+          if (!isLockedDeck && deck.sheetUrl && (Date.now() - (cached.savedAt || 0) > QUESTION_TTL_MS)) {
             fetchDirectFromSheet(deck.sheetUrl).then(fresh => {
               if (isQuestionListValid(fresh)) {
                 deck.questions = fresh;
-                idbSetQuestionCache(deck.sheetUrl, fresh);
+                idbSetQuestionCache(cacheUrl, fresh);
               }
             }).catch(() => {});
           }
@@ -1056,13 +1073,20 @@
       setGlobalLoading(true, 'Đang tải bài tập về...');
       try {
         let loaded = null;
-        if (!deck.locked) {
+        if (!isLockedDeck && deck.sheetUrl) {
           try {
             loaded = await fetchDirectFromSheet(deck.sheetUrl);
           } catch {}
         }
         if (!loaded && GAS_API_URL) {
-          const data = await callGas({ action: 'getQuestions', sheetUrl: deck.sheetUrl });
+          const data = await callGas({
+            action: 'getQuestions',
+            deckId: deck.id,
+            sheetUrl: deck.sheetUrl || '',
+            groupPassword: getUnlockedGroupPassword(deck.group),
+            adminPassword: state.isAdmin ? state.adminPassword : '',
+            forceRefresh: forceRefresh
+          });
           if (Array.isArray(data?.questions)) {
             loaded = data.questions.map(q => {
               const t = String(q?.type || '').trim().toUpperCase();
@@ -1076,7 +1100,7 @@
         }
         if (isQuestionListValid(loaded)) {
           deck.questions = loaded;
-          await idbSetQuestionCache(deck.sheetUrl, loaded);
+          await idbSetQuestionCache(cacheUrl, loaded);
         } else if (Array.isArray(loaded) && loaded.length) {
           showToast('Dữ liệu đáp án từ Sheet chưa hợp lệ, vui lòng kiểm tra lại');
         }
@@ -1175,15 +1199,25 @@
         return clean;
       } catch { return {}; }
     }
+    function isGroupLocked(g) {
+      return Boolean(g && (state.lockedGroups[g] || state.groupPasswords[g]));
+    }
     function isGroupUnlockedToday(g) {
       if (state.isAdmin) return true;
-      if (!g || !state.groupPasswords[g]) return true;
-      return getUnlockedGroupsToday()[g] === todayKey();
+      if (!isGroupLocked(g)) return true;
+      const entry = getUnlockedGroupsToday()[g];
+      return entry === todayKey() || (entry && entry.date === todayKey());
     }
-    function markGroupUnlockedToday(g) {
+    function getUnlockedGroupPassword(g) {
+      if (!g) return '';
+      if (state.isAdmin && state.groupPasswords[g]) return state.groupPasswords[g];
+      const entry = getUnlockedGroupsToday()[g];
+      return (entry && entry.date === todayKey()) ? (entry.pw || '') : '';
+    }
+    function markGroupUnlockedToday(g, pw = '') {
       try {
         const map = getUnlockedGroupsToday();
-        map[g] = todayKey();
+        map[g] = { date: todayKey(), pw: pw };
         localStorage.setItem('unlocked_groups_v1', JSON.stringify(map));
       } catch {}
     }
@@ -1193,7 +1227,7 @@
       if (!allGroups.includes(state.activeGroup)) state.activeGroup = 'Tất cả';
       $('groupFilterBar').innerHTML = allGroups.map(g => {
         const active = state.activeGroup === g;
-        const locked = g !== 'Tất cả' && Boolean(state.groupPasswords[g]);
+        const locked = g !== 'Tất cả' && isGroupLocked(g);
         const unlocked = locked && isGroupUnlockedToday(g);
         const prefix = locked ? (unlocked ? '🔓 ' : '🔒 ') : '';
         return `<button data-action="filter-group" data-group="${esc(g)}" class="btn-fx px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}">${prefix}${esc(g)}</button>`;
@@ -1209,11 +1243,11 @@
 
       const q = normStr(state.search);
       const visibleDecks = state.decks.filter(d => !d.hidden);
-      if (state.activeGroup !== 'Tất cả' && state.groupPasswords[state.activeGroup] && !isGroupUnlockedToday(state.activeGroup)) {
+      if (state.activeGroup !== 'Tất cả' && isGroupLocked(state.activeGroup) && !isGroupUnlockedToday(state.activeGroup)) {
         state.activeGroup = 'Tất cả';
       }
       const groupFiltered = visibleDecks.filter(d => {
-        const isLockedDeck = Boolean(d.group && state.groupPasswords[d.group]);
+        const isLockedDeck = Boolean(d.locked || (d.group && isGroupLocked(d.group)));
         const matchGroup = state.activeGroup === 'Tất cả'
           ? !isLockedDeck
           : (d.group || '') === state.activeGroup;
@@ -1881,7 +1915,7 @@
       } else if (act === 'refresh-data') autoLoadSheets();
       else if (act === 'filter-group') {
         const g = btn.dataset.group;
-        if (g !== 'Tất cả' && state.groupPasswords[g] && !isGroupUnlockedToday(g)) {
+        if (g !== 'Tất cả' && isGroupLocked(g) && !isGroupUnlockedToday(g)) {
           state.pendingUnlockGroup = g;
           $('groupUnlockTitle').textContent = `🔒 Mở khóa "${g}"`;
           $('inpUnlockGroupPass').value = '';
@@ -2372,11 +2406,19 @@
       }
     });
 
-    $('adminLoginForm').addEventListener('submit', e => {
+    $('adminLoginForm').addEventListener('submit', async e => {
       e.preventDefault();
       const pw = $('inpAdminPass').value;
-      if (pw === state.adminPassword) {
+      if (!pw) { showToast('Vui lòng nhập mật khẩu Admin'); return; }
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang xác thực...'; }
+      try {
+        if (!GAS_API_URL) throw new Error('Chưa kết nối Google Apps Script');
+        const res = await callGas({ action: 'verifyAdmin', password: pw });
+        if (!res?.ok) throw new Error(res?.error || 'Mật khẩu Admin không đúng');
         state.isAdmin = true;
+        state.adminPassword = pw;
+        if (Array.isArray(res.decks)) applyLobbyData(res);
         renderLobby();
         state.adminTab = 'create';
         state.editingDeckId = null;
@@ -2385,8 +2427,10 @@
         renderAdminModal();
         $('manageModal').showModal();
         showToast('Đăng nhập Admin thành công');
-      } else {
-        showToast('Mật khẩu Admin không đúng');
+      } catch (err) {
+        showToast(err.message || 'Mật khẩu Admin không đúng');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Đăng nhập'; }
       }
     });
 
@@ -2420,7 +2464,7 @@
       }
       const gp = $('inpGroupPass').value.trim();
       state.groups.push(name);
-      if (gp) state.groupPasswords[name] = gp;
+      if (gp) { state.groupPasswords[name] = gp; state.lockedGroups[name] = true; }
       await syncGroupsToAdminSheet();
       e.target.reset();
       renderAdminGroups();
@@ -2428,21 +2472,27 @@
       showToast(`Đã tạo nhóm "${name}"`);
     });
 
-    $('groupUnlockForm').addEventListener('submit', e => {
+    $('groupUnlockForm').addEventListener('submit', async e => {
       e.preventDefault();
       const g = state.pendingUnlockGroup;
       if (!g) return;
       const inputPw = $('inpUnlockGroupPass').value;
-      if (inputPw === state.groupPasswords[g]) {
-        markGroupUnlockedToday(g);
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang kiểm tra...'; }
+      try {
+        const res = await callGas({ action: 'unlockGroup', group: g, password: inputPw });
+        if (!res?.ok) throw new Error(res?.error || 'Mật khẩu không đúng');
+        markGroupUnlockedToday(g, inputPw);
         state.pendingUnlockGroup = null;
         $('groupUnlockModal').close();
         state.activeGroup = g;
         state.activeSubGroup = null;
         renderLobby();
         showToast(`Đã mở khóa "${g}" trong hôm nay`);
-      } else {
+      } catch {
         $('unlockGroupErr').classList.remove('hidden');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Mở khóa'; }
       }
     });
 
@@ -2451,8 +2501,8 @@
       const g = state.editingPassGroup;
       if (!g) return;
       const pw = $('inpEditGroupPass').value.trim();
-      if (pw) state.groupPasswords[g] = pw;
-      else delete state.groupPasswords[g];
+      if (pw) { state.groupPasswords[g] = pw; state.lockedGroups[g] = true; }
+      else { delete state.groupPasswords[g]; delete state.lockedGroups[g]; }
       state.editingPassGroup = null;
       $('adminGroupPassModal').close();
       await syncGroupsToAdminSheet();
@@ -2482,7 +2532,6 @@
           if (!res?.ok) throw new Error(res?.error || 'Lỗi đổi mật khẩu');
         }
         state.adminPassword = newPw;
-        localStorage.setItem('quiz_admin_pw', newPw);
         e.target.reset();
         showToast('Đã đổi mật khẩu Admin thành công');
       } catch (err) {
