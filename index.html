@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20rx%3D%226%22%20fill%3D%22%234f46e5%22/%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20transform%3D%22translate%282.5%2C2.5%29%20scale%280.79%29%22%3E%3Cpath%20d%3D%22M22%2010v6M2%2010l10-5%2010%205-10%205z%22/%3E%20%20%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M6%2012v5c3%203%209%203%2012%200v-5%22/%3E%3C/g%3E%3C/svg%3E">
   <title>Kho Đề & Bài Tập Trực Tuyến</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -57,14 +58,14 @@
 
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2 min-w-0 cursor-pointer" data-action="go-home">
-        <div class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      <div class="flex items-center gap-2 min-w-0">
+        <button type="button" data-action="open-welcome" title="Giới thiệu trang web" class="btn-fx w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-sm cursor-pointer">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
           </svg>
-        </div>
-        <div class="min-w-0">
+        </button>
+        <div class="min-w-0 cursor-pointer" data-action="go-home">
           <h1 class="font-bold text-slate-900 leading-tight text-sm sm:text-lg truncate">Luyện Tập Trực Tuyến</h1>
         </div>
       </div>
@@ -457,6 +458,34 @@
       <button type="button" data-action="cancel-admin-sync" class="btn-fx px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold border border-rose-200">
         Hủy thao tác
       </button>
+    </div>
+  </dialog>
+
+  <!-- MODAL GIỚI THIỆU TRANG WEB -->
+  <dialog id="welcomeModal" class="rounded-2xl p-0 backdrop:bg-slate-900/50 max-w-md w-[92%] shadow-2xl border border-slate-200">
+    <div class="p-5 sm:p-6 space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base sm:text-lg">Luyện Tập Trực Tuyến</h3>
+        </div>
+        <button type="button" data-action="close-welcome" class="px-2 py-1 text-slate-400 hover:text-slate-700 text-lg">✕</button>
+      </div>
+      <div class="space-y-3 text-sm sm:text-[15px] text-slate-700 leading-relaxed">
+        <p class="font-semibold text-slate-900">Hi, mình là Hào – người lập ra trang web này.</p>
+        <p>Xuất phát từ nhu cầu tự ôn thi sao cho tiện lợi và đỡ rối mắt nhất, mình đã tạo nên góc nhỏ này để mọi người cùng vào làm đề và trao đổi tài liệu.</p>
+        <p>Nếu bạn đang có sẵn file đề thi mà muốn đưa lên web để cả lớp cùng làm, hay cần hỗ trợ soạn đề trắc nghiệm online, cứ nhắn cho mình nhé — mình luôn sẵn sàng hỗ trợ!</p>
+      </div>
+      <div class="flex justify-end pt-1">
+        <button type="button" data-action="close-welcome" class="btn-fx px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm">
+          Bắt đầu ôn tập
+        </button>
+      </div>
     </div>
   </dialog>
 
@@ -1885,6 +1914,11 @@
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('quiz_theme', state.theme);
         applyTheme();
+      } else if (act === 'open-welcome') {
+        $('welcomeModal')?.showModal();
+      } else if (act === 'close-welcome') {
+        try { localStorage.setItem('quiz_welcome_seen_v1', '1'); } catch {}
+        $('welcomeModal')?.close();
       } else if (act === 'open-admin') {
         if (state.isAdmin) {
           state.editingDeckId = null;
@@ -2734,6 +2768,15 @@
 
     applyTheme();
     autoLoadSheets();
+    try {
+      if (!localStorage.getItem('quiz_welcome_seen_v1')) {
+        localStorage.setItem('quiz_welcome_seen_v1', '1');
+        $('welcomeModal')?.showModal();
+      }
+    } catch {}
+    $('welcomeModal')?.addEventListener('click', e => {
+      if (e.target === $('welcomeModal')) $('welcomeModal').close();
+    });
   </script>
 </body>
 </html>
