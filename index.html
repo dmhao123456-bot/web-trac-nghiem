@@ -13,14 +13,29 @@
     html, body { overflow-x: clip; }
     .btn-fx { transition: all 0.18s ease; touch-action: manipulation; }
     .btn-fx:active { transform: scale(0.96); }
-    .card-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+    .card-box { background: #ffffff; border: 1.5px solid rgba(99, 102, 241, 0.28); border-radius: 1rem; box-shadow: 0 4px 14px -2px rgba(30, 41, 59, 0.08); }
     .katex-display { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 0.25rem 0; }
     .chem-sub, .chem-sup { font-size: 0.74em; line-height: 0; position: relative; vertical-align: baseline; }
     .chem-sub { bottom: -0.22em; }
     .chem-sup { top: -0.42em; }
-    html.dark body { background-color: #020617; color: #f1f5f9; }
+    #bgScene { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    #bgDayLayer { position: absolute; inset: 0; background: linear-gradient(180deg, #dbeeff 0%, #eef7ff 45%, #f8fafc 100%); transition: opacity 0.45s ease; }
+    #bgNightLayer { position: absolute; inset: 0; opacity: 0; background: linear-gradient(180deg, #050a18 0%, #0b152b 52%, #111c33 100%); transition: opacity 0.45s ease; }
+    html.dark #bgDayLayer { opacity: 0; }
+    html.dark #bgNightLayer { opacity: 1; }
+    .bg-meadow-mask { -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 68%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(to top, rgba(0,0,0,1) 68%, rgba(0,0,0,0) 100%); }
+    .bg-sun-glow { position: absolute; top: -60px; right: 8%; width: 280px; height: 280px; border-radius: 9999px; background: radial-gradient(circle, rgba(254, 240, 138, 0.55) 0%, rgba(254, 240, 138, 0) 70%); }
+    .bg-moon-glow { position: absolute; top: 36px; right: 9%; width: 64px; height: 64px; border-radius: 9999px; box-shadow: -14px 6px 0 0 #fef08a, 0 0 36px rgba(254, 240, 138, 0.25); transform: rotate(-15deg); opacity: 0.85; }
+    .bg-cloud { position: absolute; opacity: 0.72; animation: cloudDrift 48s ease-in-out infinite alternate; }
+    .bg-star { position: absolute; border-radius: 9999px; background: #e2e8f0; animation: starTwinkle 4s ease-in-out infinite; }
+    .bg-firefly { position: absolute; width: 6px; height: 6px; border-radius: 9999px; background: radial-gradient(circle, #fef08a 0%, #a3e635 45%, rgba(163, 230, 53, 0) 75%); box-shadow: 0 0 10px 2px rgba(250, 204, 21, 0.55); animation: fireflyFloat 8s ease-in-out infinite; }
+    @keyframes cloudDrift { 0% { transform: translateX(0px); } 100% { transform: translateX(36px); } }
+    @keyframes starTwinkle { 0%, 100% { opacity: 0.25; transform: scale(0.9); } 50% { opacity: 0.9; transform: scale(1.15); } }
+    @keyframes fireflyFloat { 0%, 100% { transform: translate(0, 0) scale(0.85); opacity: 0.25; } 35% { transform: translate(18px, -24px) scale(1.25); opacity: 0.95; } 70% { transform: translate(-14px, -12px) scale(1); opacity: 0.55; } }
+    @media (prefers-reduced-motion: reduce) { .bg-cloud, .bg-star, .bg-firefly { animation: none !important; } }
+    html.dark body { background-color: #050a18; color: #f1f5f9; }
     html.dark header { background-color: #0f172a; border-color: #1e293b; }
-    html.dark .card-box, html.dark dialog { background-color: #0f172a; border-color: #1e293b; color: #f1f5f9; }
+    html.dark .card-box, html.dark dialog { background-color: #0f172a; border: 1.5px solid rgba(129, 140, 248, 0.34); color: #f1f5f9; box-shadow: 0 6px 20px -4px rgba(2, 6, 23, 0.65); }
     html.dark .bg-white { background-color: #0f172a !important; }
     html.dark .bg-white\/95 { background-color: rgba(15, 23, 42, 0.95) !important; }
     html.dark .bg-slate-50, html.dark .bg-slate-50\/50, html.dark .bg-slate-100 { background-color: #1e293b !important; }
@@ -54,8 +69,153 @@
     html.dark button.bg-slate-900:hover { background-color: #4f46e5 !important; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+<body class="bg-transparent text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+  <!-- NỀN BẦU TRỜI & CÁNH ĐỒNG HOA CÓ CHIỀU SÂU -->
+  <div id="bgScene" aria-hidden="true">
+    <div id="bgDayLayer">
+      <div class="bg-sun-glow"></div>
+      <svg class="bg-cloud" style="top:7%; left:6%; width:155px; color:#ffffff;" viewBox="0 0 160 60" fill="currentColor">
+        <path d="M35 48h92a18 18 0 0 0 2-36 26 26 0 0 0-49-6 20 20 0 0 0-31 12 15 15 0 0 0-14 30z"/>
+      </svg>
+      <svg class="bg-cloud" style="top:16%; right:13%; width:190px; color:#ffffff; animation-duration:62s; animation-delay:-18s;" viewBox="0 0 160 60" fill="currentColor">
+        <path d="M35 48h92a18 18 0 0 0 2-36 26 26 0 0 0-49-6 20 20 0 0 0-31 12 15 15 0 0 0-14 30z"/>
+      </svg>
 
+      <!-- Cánh đồng hoa 3 lớp tạo chiều sâu (Giao diện Sáng) -->
+      <svg class="bg-meadow-mask absolute bottom-0 left-0 w-full h-40 sm:h-64 opacity-65" viewBox="0 0 1440 280" preserveAspectRatio="xMidYMax slice" fill="none">
+        <!-- Lớp xa: đồi cỏ mờ & chấm hoa xa -->
+        <path d="M0 165 Q360 115 720 155 T1440 145 L1440 280 L0 280 Z" fill="#dcfce7" opacity="0.7"/>
+        <circle cx="120" cy="162" r="4" fill="#fbcfe8" opacity="0.65"/><circle cx="290" cy="148" r="3.5" fill="#c7d2fe" opacity="0.65"/>
+        <circle cx="480" cy="152" r="4" fill="#fde68a" opacity="0.65"/><circle cx="680" cy="160" r="3.5" fill="#fbcfe8" opacity="0.65"/>
+        <circle cx="890" cy="145" r="4" fill="#c7d2fe" opacity="0.65"/><circle cx="1110" cy="142" r="3.5" fill="#fbcfe8" opacity="0.65"/>
+        <circle cx="1310" cy="152" r="4" fill="#fde68a" opacity="0.65"/>
+
+        <!-- Lớp giữa: thảm cỏ & hoa cỡ vừa trải dài -->
+        <path d="M0 198 Q280 158 620 192 T1240 176 Q1350 172 1440 185 L1440 280 L0 280 Z" fill="#bbf7d0" opacity="0.78"/>
+        <g stroke="#4ade80" stroke-width="2" stroke-linecap="round">
+          <path d="M180 235 Q186 202 194 182"/><path d="M370 235 Q366 198 360 178"/>
+          <path d="M560 240 Q568 208 574 190"/><path d="M780 235 Q776 200 770 180"/>
+          <path d="M980 232 Q988 198 996 176"/><path d="M1190 230 Q1185 198 1178 178"/>
+          <path d="M1360 236 Q1366 205 1372 186"/>
+        </g>
+        <g transform="translate(194,182) scale(0.65)"><circle cx="0" cy="-11" r="7.5" fill="#f9a8d4"/><circle cx="10" cy="-3" r="7.5" fill="#fbcfe8"/><circle cx="6" cy="9" r="7.5" fill="#f9a8d4"/><circle cx="-6" cy="9" r="7.5" fill="#fbcfe8"/><circle cx="-10" cy="-3" r="7.5" fill="#f9a8d4"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+        <g transform="translate(360,178) scale(0.6)"><circle cx="0" cy="-11" r="7.5" fill="#a5b4fc"/><circle cx="10" cy="-3" r="7.5" fill="#c7d2fe"/><circle cx="6" cy="9" r="7.5" fill="#a5b4fc"/><circle cx="-6" cy="9" r="7.5" fill="#c7d2fe"/><circle cx="-10" cy="-3" r="7.5" fill="#a5b4fc"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+        <g transform="translate(574,190) scale(0.58)"><circle cx="0" cy="-11" r="7.5" fill="#fbcfe8"/><circle cx="10" cy="-3" r="7.5" fill="#f9a8d4"/><circle cx="6" cy="9" r="7.5" fill="#fbcfe8"/><circle cx="-6" cy="9" r="7.5" fill="#f9a8d4"/><circle cx="-10" cy="-3" r="7.5" fill="#fbcfe8"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+        <g transform="translate(770,180) scale(0.62)"><circle cx="0" cy="-11" r="7.5" fill="#a5b4fc"/><circle cx="10" cy="-3" r="7.5" fill="#c7d2fe"/><circle cx="6" cy="9" r="7.5" fill="#a5b4fc"/><circle cx="-6" cy="9" r="7.5" fill="#c7d2fe"/><circle cx="-10" cy="-3" r="7.5" fill="#a5b4fc"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+        <g transform="translate(996,176) scale(0.66)"><circle cx="0" cy="-11" r="7.5" fill="#f9a8d4"/><circle cx="10" cy="-3" r="7.5" fill="#fbcfe8"/><circle cx="6" cy="9" r="7.5" fill="#f9a8d4"/><circle cx="-6" cy="9" r="7.5" fill="#fbcfe8"/><circle cx="-10" cy="-3" r="7.5" fill="#f9a8d4"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+        <g transform="translate(1178,178) scale(0.6)"><circle cx="0" cy="-11" r="7.5" fill="#c7d2fe"/><circle cx="10" cy="-3" r="7.5" fill="#a5b4fc"/><circle cx="6" cy="9" r="7.5" fill="#c7d2fe"/><circle cx="-6" cy="9" r="7.5" fill="#a5b4fc"/><circle cx="-10" cy="-3" r="7.5" fill="#c7d2fe"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+        <g transform="translate(1372,186) scale(0.62)"><circle cx="0" cy="-11" r="7.5" fill="#f9a8d4"/><circle cx="10" cy="-3" r="7.5" fill="#fbcfe8"/><circle cx="6" cy="9" r="7.5" fill="#f9a8d4"/><circle cx="-6" cy="9" r="7.5" fill="#fbcfe8"/><circle cx="-10" cy="-3" r="7.5" fill="#f9a8d4"/><circle cx="0" cy="0" r="5" fill="#fde047"/></g>
+
+        <!-- Lớp gần: cỏ xanh & hoa lớn sắc nét trải suốt chiều ngang -->
+        <path d="M0 236 Q320 206 720 232 T1440 220 L1440 280 L0 280 Z" fill="#86efac" opacity="0.82"/>
+                <g stroke="#22c55e" stroke-width="2" stroke-linecap="round" opacity="0.6">
+          <path d="M24 280 Q28 250 18 228"/><path d="M148 280 Q154 248 164 230"/>
+          <path d="M330 280 Q324 252 316 232"/><path d="M540 280 Q548 250 558 228"/>
+          <path d="M745 280 Q738 252 730 232"/><path d="M975 280 Q982 248 992 226"/>
+          <path d="M1185 280 Q1178 250 1168 230"/><path d="M1395 280 Q1402 250 1412 228"/>
+        </g>
+        <g transform="translate(18,228) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#fbcfe8"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#fbcfe8"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(164,230) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#a5b4fc"/><circle cx="11" cy="-4" r="8" fill="#c7d2fe"/><circle cx="7" cy="9" r="8" fill="#a5b4fc"/><circle cx="-7" cy="9" r="8" fill="#c7d2fe"/><circle cx="-11" cy="-4" r="8" fill="#a5b4fc"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(316,232) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#fb7185"/><circle cx="11" cy="-4" r="8" fill="#fda4af"/><circle cx="7" cy="9" r="8" fill="#fb7185"/><circle cx="-7" cy="9" r="8" fill="#fda4af"/><circle cx="-11" cy="-4" r="8" fill="#fb7185"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(558,228) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#a5b4fc"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#a5b4fc"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(730,232) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#f9a8d4"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#f9a8d4"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(992,226) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#fb7185"/><circle cx="11" cy="-4" r="8" fill="#fda4af"/><circle cx="7" cy="9" r="8" fill="#fb7185"/><circle cx="-7" cy="9" r="8" fill="#fda4af"/><circle cx="-11" cy="-4" r="8" fill="#fb7185"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(1168,230) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#c7d2fe"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#c7d2fe"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(1412,228) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#fbcfe8"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#fbcfe8"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g stroke="#22c55e" stroke-width="2.8" stroke-linecap="round">
+          <path d="M68 280 Q76 226 90 192"/><path d="M265 280 Q258 232 246 202"/>
+          <path d="M460 280 Q470 236 482 206"/><path d="M665 280 Q658 230 648 198"/>
+          <path d="M875 280 Q886 232 898 202"/><path d="M1085 280 Q1076 228 1064 196"/>
+          <path d="M1285 280 Q1296 232 1308 198"/>
+        </g>
+        <g transform="translate(90,192)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#f9a8d4"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#f9a8d4"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+        <g transform="translate(246,202) scale(0.9)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#a5b4fc"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#a5b4fc"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+        <g transform="translate(482,206) scale(0.88)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#fbcfe8"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#fbcfe8"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+        <g transform="translate(648,198) scale(0.92)"><circle cx="0" cy="-12" r="8" fill="#fb7185"/><circle cx="11" cy="-4" r="8" fill="#fda4af"/><circle cx="7" cy="9" r="8" fill="#fb7185"/><circle cx="-7" cy="9" r="8" fill="#fda4af"/><circle cx="-11" cy="-4" r="8" fill="#fb7185"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+        <g transform="translate(898,202) scale(0.9)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#a5b4fc"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#a5b4fc"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+        <g transform="translate(1064,196) scale(0.95)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#f9a8d4"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#f9a8d4"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+        <g transform="translate(1308,198) scale(0.95)"><circle cx="0" cy="-12" r="8" fill="#fb7185"/><circle cx="11" cy="-4" r="8" fill="#fda4af"/><circle cx="7" cy="9" r="8" fill="#fb7185"/><circle cx="-7" cy="9" r="8" fill="#fda4af"/><circle cx="-11" cy="-4" r="8" fill="#fb7185"/><circle cx="0" cy="0" r="6" fill="#fde047"/></g>
+      </svg>
+    </div>
+
+    <div id="bgNightLayer">
+      <div class="bg-moon-glow"></div>
+      <span class="bg-star" style="top:9%; left:14%; width:2px; height:2px; animation-delay:0s;"></span>
+      <span class="bg-star" style="top:15%; left:28%; width:3px; height:3px; animation-delay:1.2s;"></span>
+      <span class="bg-star" style="top:7%; left:46%; width:2px; height:2px; animation-delay:2.1s;"></span>
+      <span class="bg-star" style="top:19%; left:62%; width:2.5px; height:2.5px; animation-delay:0.7s;"></span>
+      <span class="bg-star" style="top:12%; left:76%; width:2px; height:2px; animation-delay:1.8s;"></span>
+      <span class="bg-star" style="top:24%; left:18%; width:2px; height:2px; animation-delay:2.9s;"></span>
+      <span class="bg-star" style="top:27%; right:22%; width:2.5px; height:2.5px; animation-delay:1.4s;"></span>
+
+      <!-- Cánh đồng hoa đêm 3 lớp tạo chiều sâu (Giao diện Tối) -->
+      <svg class="bg-meadow-mask absolute bottom-0 left-0 w-full h-40 sm:h-64 opacity-55" viewBox="0 0 1440 280" preserveAspectRatio="xMidYMax slice" fill="none">
+        <!-- Lớp xa -->
+        <path d="M0 165 Q360 115 720 155 T1440 145 L1440 280 L0 280 Z" fill="#0c1e35" opacity="0.78"/>
+        <circle cx="140" cy="160" r="3.5" fill="#818cf8" opacity="0.45"/><circle cx="340" cy="146" r="3" fill="#f472b6" opacity="0.45"/>
+        <circle cx="560" cy="155" r="3.5" fill="#818cf8" opacity="0.45"/><circle cx="820" cy="152" r="3" fill="#f472b6" opacity="0.45"/>
+        <circle cx="1080" cy="142" r="3.5" fill="#818cf8" opacity="0.45"/><circle cx="1290" cy="150" r="3" fill="#f472b6" opacity="0.45"/>
+
+        <!-- Lớp giữa -->
+        <path d="M0 198 Q280 158 620 192 T1240 176 Q1350 172 1440 185 L1440 280 L0 280 Z" fill="#0d2a2d" opacity="0.82"/>
+        <g stroke="#166534" stroke-width="2" stroke-linecap="round">
+          <path d="M180 235 Q186 202 194 182"/><path d="M370 235 Q366 198 360 178"/>
+          <path d="M560 240 Q568 208 574 190"/><path d="M780 235 Q776 200 770 180"/>
+          <path d="M980 232 Q988 198 996 176"/><path d="M1190 230 Q1185 198 1178 178"/>
+          <path d="M1360 236 Q1366 205 1372 186"/>
+        </g>
+        <g transform="translate(194,182) scale(0.62)"><circle cx="0" cy="-11" r="7.5" fill="#6366f1"/><circle cx="10" cy="-3" r="7.5" fill="#818cf8"/><circle cx="6" cy="9" r="7.5" fill="#6366f1"/><circle cx="-6" cy="9" r="7.5" fill="#818cf8"/><circle cx="-10" cy="-3" r="7.5" fill="#6366f1"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+        <g transform="translate(360,178) scale(0.58)"><circle cx="0" cy="-11" r="7.5" fill="#ec4899"/><circle cx="10" cy="-3" r="7.5" fill="#f472b6"/><circle cx="6" cy="9" r="7.5" fill="#ec4899"/><circle cx="-6" cy="9" r="7.5" fill="#f472b6"/><circle cx="-10" cy="-3" r="7.5" fill="#ec4899"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+        <g transform="translate(574,190) scale(0.58)"><circle cx="0" cy="-11" r="7.5" fill="#818cf8"/><circle cx="10" cy="-3" r="7.5" fill="#6366f1"/><circle cx="6" cy="9" r="7.5" fill="#818cf8"/><circle cx="-6" cy="9" r="7.5" fill="#6366f1"/><circle cx="-10" cy="-3" r="7.5" fill="#818cf8"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+        <g transform="translate(770,180) scale(0.6)"><circle cx="0" cy="-11" r="7.5" fill="#ec4899"/><circle cx="10" cy="-3" r="7.5" fill="#f472b6"/><circle cx="6" cy="9" r="7.5" fill="#ec4899"/><circle cx="-6" cy="9" r="7.5" fill="#f472b6"/><circle cx="-10" cy="-3" r="7.5" fill="#ec4899"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+        <g transform="translate(996,176) scale(0.64)"><circle cx="0" cy="-11" r="7.5" fill="#6366f1"/><circle cx="10" cy="-3" r="7.5" fill="#818cf8"/><circle cx="6" cy="9" r="7.5" fill="#6366f1"/><circle cx="-6" cy="9" r="7.5" fill="#818cf8"/><circle cx="-10" cy="-3" r="7.5" fill="#6366f1"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+        <g transform="translate(1178,178) scale(0.58)"><circle cx="0" cy="-11" r="7.5" fill="#f472b6"/><circle cx="10" cy="-3" r="7.5" fill="#ec4899"/><circle cx="6" cy="9" r="7.5" fill="#f472b6"/><circle cx="-6" cy="9" r="7.5" fill="#ec4899"/><circle cx="-10" cy="-3" r="7.5" fill="#f472b6"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+        <g transform="translate(1372,186) scale(0.6)"><circle cx="0" cy="-11" r="7.5" fill="#6366f1"/><circle cx="10" cy="-3" r="7.5" fill="#818cf8"/><circle cx="6" cy="9" r="7.5" fill="#6366f1"/><circle cx="-6" cy="9" r="7.5" fill="#818cf8"/><circle cx="-10" cy="-3" r="7.5" fill="#6366f1"/><circle cx="0" cy="0" r="4.5" fill="#fde047"/></g>
+
+        <!-- Lớp gần -->
+        <path d="M0 236 Q320 206 720 232 T1440 220 L1440 280 L0 280 Z" fill="#0f3a34" opacity="0.88"/>
+                <g stroke="#15803d" stroke-width="2" stroke-linecap="round" opacity="0.7">
+          <path d="M24 280 Q28 250 18 228"/><path d="M148 280 Q154 248 164 230"/>
+          <path d="M330 280 Q324 252 316 232"/><path d="M540 280 Q548 250 558 228"/>
+          <path d="M745 280 Q738 252 730 232"/><path d="M975 280 Q982 248 992 226"/>
+          <path d="M1185 280 Q1178 250 1168 230"/><path d="M1395 280 Q1402 250 1412 228"/>
+        </g>
+        <g transform="translate(18,228) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(164,230) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(316,232) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#a5b4fc"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#a5b4fc"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(558,228) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(730,232) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(992,226) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(1168,230) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(1412,228) scale(0.68)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g stroke="#15803d" stroke-width="2.8" stroke-linecap="round">
+          <path d="M68 280 Q76 226 90 192"/><path d="M265 280 Q258 232 246 202"/>
+          <path d="M460 280 Q470 236 482 206"/><path d="M665 280 Q658 230 648 198"/>
+          <path d="M875 280 Q886 232 898 202"/><path d="M1085 280 Q1076 228 1064 196"/>
+          <path d="M1285 280 Q1296 232 1308 198"/>
+        </g>
+        <g transform="translate(90,192)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(246,202) scale(0.9)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(482,206) scale(0.88)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(648,198) scale(0.92)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(898,202) scale(0.9)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(1064,196) scale(0.95)"><circle cx="0" cy="-12" r="8" fill="#f472b6"/><circle cx="11" cy="-4" r="8" fill="#ec4899"/><circle cx="7" cy="9" r="8" fill="#f472b6"/><circle cx="-7" cy="9" r="8" fill="#ec4899"/><circle cx="-11" cy="-4" r="8" fill="#f472b6"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+        <g transform="translate(1308,198) scale(0.95)"><circle cx="0" cy="-12" r="8" fill="#818cf8"/><circle cx="11" cy="-4" r="8" fill="#6366f1"/><circle cx="7" cy="9" r="8" fill="#818cf8"/><circle cx="-7" cy="9" r="8" fill="#6366f1"/><circle cx="-11" cy="-4" r="8" fill="#818cf8"/><circle cx="0" cy="0" r="5.5" fill="#fde047"/></g>
+      </svg>
+
+      <!-- Đom đóm bay trải khắp cánh đồng -->
+      <span class="bg-firefly" style="bottom:14%; left:7%; animation-duration:7.5s; animation-delay:0s;"></span>
+      <span class="bg-firefly" style="bottom:22%; left:18%; width:8px; height:8px; animation-duration:9.2s; animation-delay:-2.4s;"></span>
+      <span class="bg-firefly" style="bottom:15%; left:33%; animation-duration:8.4s; animation-delay:-4.1s;"></span>
+      <span class="bg-firefly" style="bottom:26%; left:47%; width:5px; height:5px; animation-duration:10.5s; animation-delay:-1.3s;"></span>
+      <span class="bg-firefly" style="bottom:18%; left:61%; width:7px; height:7px; animation-duration:8.8s; animation-delay:-3.2s;"></span>
+      <span class="bg-firefly" style="bottom:24%; right:24%; animation-duration:9.6s; animation-delay:-5.5s;"></span>
+      <span class="bg-firefly" style="bottom:13%; right:12%; width:5px; height:5px; animation-duration:7.9s; animation-delay:-0.9s;"></span>
+      <span class="bg-firefly" style="top:34%; left:9%; animation-duration:11s; animation-delay:-2.8s;"></span>
+      <span class="bg-firefly" style="top:42%; right:8%; width:7px; height:7px; animation-duration:10.2s; animation-delay:-4.7s;"></span>
+      <span class="bg-firefly" style="top:22%; left:42%; width:5px; height:5px; animation-duration:11.5s; animation-delay:-6.1s;"></span>
+    </div>
+  </div>
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
@@ -87,7 +247,7 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <main class="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- MÀN HÌNH 1: SẢNH CHỌN MỤC -->
     <section id="viewLobby" class="space-y-4 sm:space-y-5">
       <div class="card-box p-4 sm:p-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-0">
@@ -488,6 +648,29 @@
       </div>
     </div>
   </dialog>
+
+  <!-- MODAL BẢNG SỐ CÂU TRÊN ĐIỆN THOẠI -->
+  <dialog id="mobilePaletteModal" class="rounded-2xl p-0 backdrop:bg-slate-900/50 max-w-md w-[92%] shadow-2xl border border-slate-200">
+    <div class="p-4 sm:p-5 space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Danh sách câu hỏi</h3>
+          <p id="mobilePaletteCount" class="text-xs font-semibold text-slate-500 mt-0.5"></p>
+        </div>
+        <button type="button" data-action="close-mobile-palette" class="px-2 py-1 text-slate-400 hover:text-slate-700 text-lg">✕</button>
+      </div>
+      <div id="mobilePaletteLegend" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500"></div>
+      <div id="mobilePaletteGrid" class="grid grid-cols-5 gap-1.5 max-h-[55vh] overflow-y-auto pr-0.5"></div>
+    </div>
+  </dialog>
+
+  <!-- NÚT NỔI: BẢNG SỐ CÂU (MOBILE) & CUỘN LÊN ĐẦU TRANG -->
+  <button id="btnMobilePalette" type="button" data-action="open-mobile-palette" class="hidden lg:hidden fixed bottom-5 left-4 z-30 btn-fx px-3.5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg flex items-center gap-1.5">
+    <span>📋</span><span id="btnMobilePaletteText">0/0</span>
+  </button>
+  <button id="btnScrollTop" type="button" data-action="scroll-top" title="Lên đầu trang" class="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-30 btn-fx w-10 h-10 rounded-full bg-slate-900/90 hover:bg-indigo-600 text-white shadow-lg flex items-center justify-center opacity-0 pointer-events-none translate-y-2 transition-all duration-200">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+  </button>
 
   <!-- MỤC ĐANG TẢI VỀ (HIỂN THỊ TRÊN CẢ MÁY TÍNH & ĐIỆN THOẠI) -->
   <div id="loadingOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/25 backdrop-blur-[1px] flex items-center justify-center px-4">
@@ -1327,7 +1510,7 @@
           </div>
           ${d.note ? `<div class="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/70 text-xs text-amber-900 whitespace-pre-line break-words">📝 ${chemHtml(d.note)}</div>` : ''}
         </article>`;
-      }).join('') : `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Không tìm thấy bài tập phù hợp trong mục này.</div>`;
+      }).join('') : `<div class="col-span-full card-box text-center py-10 px-4 text-slate-500 text-sm font-medium">Không tìm thấy bài tập phù hợp trong mục này.</div>`;
     }
 
     function renderDetail() {
@@ -1482,6 +1665,14 @@
         }
         return `<button type="button" data-action="jump-question" data-qid="${esc(q.id)}" class="btn-fx h-8 rounded-lg border text-xs font-bold flex items-center justify-center ${cls}">${idx + 1}</button>`;
       }).join('');
+      const mGrid = $('mobilePaletteGrid');
+      const mCount = $('mobilePaletteCount');
+      const mLegend = $('mobilePaletteLegend');
+      const mBtnText = $('btnMobilePaletteText');
+      if (mGrid) mGrid.innerHTML = grid.innerHTML;
+      if (mCount) mCount.textContent = countEl.textContent;
+      if (mLegend) mLegend.innerHTML = legendEl.innerHTML;
+      if (mBtnText) mBtnText.textContent = countEl.textContent;
     }
 
     function renderQuiz() {
@@ -1864,6 +2055,7 @@
       $('viewLobby').classList.toggle('hidden', view !== 'lobby');
       $('viewDetail').classList.toggle('hidden', view !== 'detail');
       $('viewQuiz').classList.toggle('hidden', view !== 'quiz');
+      $('btnMobilePalette')?.classList.toggle('hidden', view !== 'quiz');
       if (view === 'lobby') renderLobby();
       else if (view === 'detail') renderDetail();
       else { setQuizBarVisible(true); renderQuiz(); }
@@ -2245,7 +2437,14 @@
         else state.flags[qid] = true;
         saveDraft();
         renderQuiz();
+      } else if (act === 'open-mobile-palette') {
+        $('mobilePaletteModal')?.showModal();
+      } else if (act === 'close-mobile-palette') {
+        $('mobilePaletteModal')?.close();
+      } else if (act === 'scroll-top') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (act === 'jump-question') {
+        if ($('mobilePaletteModal')?.open) $('mobilePaletteModal').close();
         const qid = btn.dataset.qid;
         let card = document.getElementById('qcard-' + qid);
         if (!card) {
@@ -2773,7 +2972,17 @@
       applyQuizBarProgress(visible ? 1 : 0, true);
     }
 
+    $('mobilePaletteModal')?.addEventListener('click', e => {
+      if (e.target === $('mobilePaletteModal')) $('mobilePaletteModal').close();
+    });
     window.addEventListener('scroll', () => {
+      const topBtn = $('btnScrollTop');
+      if (topBtn) {
+        const showTop = (window.scrollY || 0) > 360;
+        topBtn.classList.toggle('opacity-0', !showTop);
+        topBtn.classList.toggle('pointer-events-none', !showTop);
+        topBtn.classList.toggle('translate-y-2', !showTop);
+      }
       if (state.view !== 'quiz') return;
       const curY = window.scrollY || 0;
       const delta = curY - lastQuizScrollY;
