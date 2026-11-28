@@ -1312,6 +1312,17 @@
               if (t.includes('ĐÚNG') || t.includes('DUNG') || t === 'TF') normType = 'TF';
               else if (t.includes('NGẮN') || t.includes('NGAN') || t === 'SHORT') normType = 'SHORT';
               else if (t.includes('TRẮC') || t.includes('TRAC') || t === 'MCQ' || !t) normType = 'MCQ';
+              if (normType === 'TF' && Array.isArray(q.items)) {
+                return {
+                  ...q,
+                  type: normType,
+                  items: q.items.map(it => {
+                    const u = String(it?.answer || '').trim().toUpperCase();
+                    const normAns = (u === 'Đ' || u === 'D' || u === 'TRUE' || u === 'ĐÚNG' || u === 'DUNG' || u === '1') ? 'Đ' : 'S';
+                    return { ...it, answer: normAns };
+                  })
+                };
+              }
               return { ...q, type: normType };
             });
           } else if (data?.error) showToast(data.error);
